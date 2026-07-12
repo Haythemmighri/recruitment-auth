@@ -11,6 +11,14 @@ To demonstrate architectural flexibility and provide multiple implementation exa
 - `/Back-nodejs` - The **Node.js 20+** (TypeScript) implementation using Express.js and Prisma ORM.
 - `/frontend` - The frontend application (Angular).
 
+## Architecture Patterns
+
+The platform implements distinct architectural patterns across the different backend environments to provide varied implementation strategies:
+
+- **ASP.NET**: Uses **Clean Architecture**. The solution is divided into strictly decoupled layers: `API` (Presentation), `Application` (Use cases/DTOs), `Domain` (Core entities), and `Infrastructure` (Database/External Services). This enforces the dependency rule where inner layers do not depend on outer layers.
+- **Laravel**: Uses a robust **MVC (Model-View-Controller)** pattern adapted for API development. Business logic is abstracted into dedicated `Service` classes, and request validation is strictly handled by `FormRequests`, keeping controllers thin.
+- **Node.js**: Uses a modular **Layered Architecture**. The application is structured into `Controllers` (handling HTTP requests), `Services` (containing core business logic), and `Middlewares` (handling cross-cutting concerns like authentication, rate limiting, and sanitization).
+
 ## Core Features (Consistent Across All Backends)
 
 Regardless of the backend you choose to run, the system implements the following hardened security features:
