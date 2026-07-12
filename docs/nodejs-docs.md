@@ -200,6 +200,8 @@ flowchart LR
 
 Based on the actual Prisma schema (`schema.prisma`) and TypeScript service classes.
 
+![Node.js Class Diagram](nodejs-class-diagram.png)
+
 ```mermaid
 classDiagram
     class User {

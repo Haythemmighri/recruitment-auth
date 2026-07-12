@@ -202,6 +202,8 @@ flowchart LR
 
 Based on the actual Eloquent Models and Service classes in the Laravel backend.
 
+![Laravel Class Diagram](laravel-class-diagram.png)
+
 ```mermaid
 classDiagram
     class User {

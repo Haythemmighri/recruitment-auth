@@ -198,6 +198,8 @@ flowchart LR
 
 Based on the actual C# entity classes in the `Domain` layer and service interfaces in the `Application` layer.
 
+![ASP.NET Class Diagram](aspnet-class-diagram.png)
+
 ```mermaid
 classDiagram
     class User {
