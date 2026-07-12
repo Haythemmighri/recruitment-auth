@@ -1,0 +1,1699 @@
+{
+  "info": {
+    "_postman_id": "7a3560b3-f09b-449e-af57-3a1372b662df",
+    "name": "Recruitment Auth API",
+    "description": "Complete test collection for the Recruitment Auth API.\n\n## How to use\n1. Import this collection AND the `recruitment-auth.postman_environment.json` file.\n2. Select the **Recruitment Auth - Local** environment from the top-right dropdown.\n3. Make sure the server is running (`npm run dev`).\n4. Run requests in order, starting with **0. Health Check**.\n\n## CSRF Note\nThe app uses double-submit CSRF protection. Every mutating request (POST/PATCH/DELETE) automatically fetches a fresh CSRF token via a **Pre-request Script** on the collection root before executing — you don't need to do anything manually.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// ── Collection-level Pre-request Script ──────────────────────────────────",
+          "// Automatically fetch & inject a CSRF token before every state-changing",
+          "// (non-GET, non-OPTIONS) request so you never have to do it manually.",
+          "",
+          "const method = pm.request.method;",
+          "const skipCsrf = ['GET', 'HEAD', 'OPTIONS'].includes(method);",
+          "",
+          "if (!skipCsrf) {",
+          "    const baseUrl = pm.environment.get('baseUrl') || 'http://localhost:3000';",
+          "",
+          "    pm.sendRequest(`${baseUrl}/auth/csrf-token`, function (err, response) {",
+          "        if (err) {",
+          "            console.error('CSRF fetch error:', err);",
+          "            return;",
+          "        }",
+          "        const json = response.json();",
+          "        if (json && json.data && json.data.csrfToken) {",
+          "            pm.environment.set('csrfToken', json.data.csrfToken);",
+          "            console.log('✅ CSRF token refreshed');",
+          "        } else {",
+          "            console.warn('⚠️  Could not extract CSRF token from response:', JSON.stringify(json));",
+          "        }",
+          "    });",
+          "}"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Collection-level test: log the response status for every request",
+          "console.log(`[${pm.info.requestName}] → ${pm.response.code} ${pm.response.status}`);"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "0. Health Check",
+      "item": [
+        {
+          "name": "Health Check",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Status is OK', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.status).to.eql('OK');",
+                  "    pm.expect(json.timestamp).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            },
+            "description": "Simple liveness probe. Should return `{ status: 'OK', timestamp: '...' }`."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "1. Auth — Public",
+      "item": [
+        {
+          "name": "Get CSRF Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('CSRF token returned and saved', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.true;",
+                  "    pm.expect(json.data.csrfToken).to.be.a('string');",
+                  "    pm.environment.set('csrfToken', json.data.csrfToken);",
+                  "    console.log('💾 csrfToken saved:', json.data.csrfToken.substring(0, 20) + '...');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/csrf-token",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "csrf-token"]
+            },
+            "description": "Fetches a CSRF token. The collection pre-request script calls this automatically before every POST/PATCH, so you rarely need to run this manually."
+          },
+          "response": []
+        },
+        {
+          "name": "Register (Candidate)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Success flag is true', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.true;",
+                  "    console.log('📧 Check email inbox — a verification link should be sent.');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"firstName\": \"Jane\",\n    \"lastName\": \"Smith\",\n    \"email\": \"jane.smith@example.com\",\n    \"phone\": \"+1234567890\",\n    \"password\": \"SecurePass123!\",\n    \"role\": \"CANDIDATE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "register"]
+            },
+            "description": "Register a new CANDIDATE account.\n\n**Roles:** `CANDIDATE`, `RECRUITER`, `ADMIN`\n\n**Password rules:** 8–128 chars, must contain uppercase, lowercase, digit, and special char."
+          },
+          "response": []
+        },
+        {
+          "name": "Register (Recruiter)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Success flag is true', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"firstName\": \"Bob\",\n    \"lastName\": \"Recruiter\",\n    \"email\": \"bob.recruiter@example.com\",\n    \"phone\": \"+0987654321\",\n    \"password\": \"SecurePass123!\",\n    \"role\": \"RECRUITER\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "register"]
+            },
+            "description": "Register a RECRUITER account."
+          },
+          "response": []
+        },
+        {
+          "name": "Register (Admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Success flag is true', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"firstName\": \"Alice\",\n    \"lastName\": \"Admin\",\n    \"email\": \"alice.admin@example.com\",\n    \"phone\": \"+1122334455\",\n    \"password\": \"AdminPass123!\",\n    \"role\": \"ADMIN\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "register"]
+            },
+            "description": "Register an ADMIN account. Note: in a real system you'd protect this. For dev/testing this is open."
+          },
+          "response": []
+        },
+        {
+          "name": "Register — Validation Error (weak password)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 422 (Unprocessable Entity)', () => pm.response.to.have.status(422));",
+                  "pm.test('Returns validation errors', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.false;",
+                  "    pm.expect(json.errors).to.be.an('object');",
+                  "    console.log('Validation errors:', JSON.stringify(json.errors, null, 2));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"firstName\": \"Test\",\n    \"lastName\": \"User\",\n    \"email\": \"test@example.com\",\n    \"phone\": \"+1234567890\",\n    \"password\": \"weakpass\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "register"]
+            },
+            "description": "Deliberately sends a weak password to verify Zod validation returns 422 with field-level errors."
+          },
+          "response": []
+        },
+        {
+          "name": "Verify Email",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// This will return 400/401 if the token variable is empty.",
+                  "// Paste the real token from the verification email link into the {{emailVerifyToken}} env var.",
+                  "pm.test('Response is not a server error', () => {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 400, 401, 404, 422]);",
+                  "    const json = pm.response.json();",
+                  "    console.log('Verify email result:', json.message);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/verify-email?token={{emailVerifyToken}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "verify-email"],
+              "query": [
+                {
+                  "key": "token",
+                  "value": "{{emailVerifyToken}}",
+                  "description": "Paste the token from the verification email link here, or set the emailVerifyToken env variable."
+                }
+              ]
+            },
+            "description": "Verifies a user's email. Copy the `token` query parameter from the verification link sent to your email (or Ethereal preview) and paste it into the `emailVerifyToken` environment variable."
+          },
+          "response": []
+        },
+        {
+          "name": "Login (Candidate)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Access token saved', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.true;",
+                  "",
+                  "    if (json.data && json.data.requiresTwoFactor) {",
+                  "        // 2FA required — save temp token for the 2FA verify step",
+                  "        pm.environment.set('tempToken', json.data.tempToken);",
+                  "        console.log('🔐 2FA required. tempToken saved. Run \"Verify 2FA\" next.');",
+                  "    } else if (json.data && json.data.accessToken) {",
+                  "        pm.environment.set('accessToken', json.data.accessToken);",
+                  "        console.log('🎉 Login successful! accessToken saved.');",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"jane.smith@example.com\",\n    \"password\": \"SecurePass123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Login as Candidate. On success:\n- `accessToken` is saved to the environment (used for all protected routes)\n- `refreshToken` is set in an **HttpOnly cookie** (invisible in Postman body, but Postman stores it automatically)\n\nIf 2FA is enabled, returns `{ requiresTwoFactor: true, tempToken: '...' }` instead — run **Verify 2FA** next."
+          },
+          "response": []
+        },
+        {
+          "name": "Login (Admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Admin access token saved', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.true;",
+                  "",
+                  "    if (json.data && json.data.requiresTwoFactor) {",
+                  "        pm.environment.set('tempToken', json.data.tempToken);",
+                  "        console.log('🔐 2FA required. tempToken saved.');",
+                  "    } else if (json.data && json.data.accessToken) {",
+                  "        pm.environment.set('adminAccessToken', json.data.accessToken);",
+                  "        // Also set as the main access token for convenience",
+                  "        pm.environment.set('accessToken', json.data.accessToken);",
+                  "        console.log('🎉 Admin login successful! adminAccessToken saved.');",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"alice.admin@example.com\",\n    \"password\": \"AdminPass123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Login as Admin. Saves the token to both `adminAccessToken` and `accessToken`."
+          },
+          "response": []
+        },
+        {
+          "name": "Login — Wrong Password",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 401', () => pm.response.to.have.status(401));",
+                  "pm.test('Error message returned', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.false;",
+                  "    pm.expect(json.message).to.be.a('string');",
+                  "    console.log('Expected error:', json.message);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"jane.smith@example.com\",\n    \"password\": \"WrongPassword999!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Expects a 401 Unauthorized response. Also validates brute-force lockout behavior — repeated calls will eventually return 429."
+          },
+          "response": []
+        },
+        {
+          "name": "Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('New access token saved', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.true;",
+                  "    pm.expect(json.data.accessToken).to.be.a('string');",
+                  "    pm.environment.set('accessToken', json.data.accessToken);",
+                  "    console.log('🔄 Access token rotated successfully.');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/refresh",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "refresh"]
+            },
+            "description": "Uses the HttpOnly `refreshToken` cookie (set automatically by Postman after login) to issue a new access token. Also rotates the refresh token (old one is revoked).\n\n**Run Login first** to ensure the cookie is set."
+          },
+          "response": []
+        },
+        {
+          "name": "Forgot Password",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Safe response message returned', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.true;",
+                  "    // Response should always look the same whether email exists or not",
+                  "    console.log('Forgot password response:', json.message);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"jane.smith@example.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/forgot-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "forgot-password"]
+            },
+            "description": "Sends a password reset email. Always returns a success-looking response (even for unknown emails) to prevent user enumeration attacks."
+          },
+          "response": []
+        },
+        {
+          "name": "Forgot Password — Non-existent Email (enum test)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200 (no user enumeration)', () => pm.response.to.have.status(200));",
+                  "pm.test('Response is identical to valid email response', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.true;",
+                  "    console.log('Anti-enumeration check PASSED. Message:', json.message);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"doesnotexist@nowhere.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/forgot-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "forgot-password"]
+            },
+            "description": "Tests that a non-existent email still returns HTTP 200 with a safe message, confirming no user enumeration vulnerability."
+          },
+          "response": []
+        },
+        {
+          "name": "Reset Password",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Will fail with 400/401 if passwordResetToken env var is empty.",
+                  "// Copy the token from the reset email link and set it in the env.",
+                  "pm.test('Response received', () => {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 400, 401, 422]);",
+                  "    const json = pm.response.json();",
+                  "    console.log('Reset password result:', json.message);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"token\": \"{{passwordResetToken}}\",\n    \"newPassword\": \"NewSecurePass456!\",\n    \"confirmPassword\": \"NewSecurePass456!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/reset-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "reset-password"]
+            },
+            "description": "Resets the password. Requires a valid reset token from the forgot-password email.\n\n1. Run **Forgot Password**\n2. Open the email (or Ethereal preview)\n3. Copy the `token` query param from the reset link\n4. Set it as `passwordResetToken` in the environment\n5. Run this request"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "2. Protected — User",
+      "item": [
+        {
+          "name": "Get My Profile",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Profile data returned', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.true;",
+                  "    pm.expect(json.data).to.have.property('email');",
+                  "    pm.expect(json.data).to.have.property('role');",
+                  "    // Save userId for admin tests",
+                  "    if (json.data.id) {",
+                  "        pm.environment.set('userId', json.data.id);",
+                  "        console.log('💾 userId saved:', json.data.id);",
+                  "    }",
+                  "    // Confirm no sensitive fields are leaked",
+                  "    pm.expect(json.data).to.not.have.property('passwordHash');",
+                  "    pm.expect(json.data).to.not.have.property('twoFactorSecret');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "me"]
+            },
+            "description": "Returns the authenticated user's profile. Also saves `userId` to the environment for admin endpoint tests. Validates that sensitive fields (passwordHash, twoFactorSecret) are **not** returned."
+          },
+          "response": []
+        },
+        {
+          "name": "Update My Profile",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Profile updated', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.true;",
+                  "    pm.expect(json.data.firstName).to.eql('Janet');",
+                  "    console.log('✅ Profile updated:', json.data);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"firstName\": \"Janet\",\n    \"lastName\": \"Smith-Updated\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "me"]
+            },
+            "description": "Updates firstName and/or lastName and/or phone. All fields are optional — only provided fields are updated."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Profile — No Token (401 test)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 401 Unauthorized', () => pm.response.to.have.status(401));",
+                  "pm.test('Appropriate error message', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.false;",
+                  "    console.log('Expected 401 error:', json.message);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "me"]
+            },
+            "description": "Hits a protected endpoint without a Bearer token. Expects 401 Unauthorized."
+          },
+          "response": []
+        },
+        {
+          "name": "Logout",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Logout successful', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.true;",
+                  "    // Clear tokens from environment",
+                  "    pm.environment.unset('accessToken');",
+                  "    console.log('👋 Logged out. accessToken cleared from environment.');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "logout"]
+            },
+            "description": "Logs out the current user. This:\n1. Revokes the refresh token in the DB\n2. Clears the HttpOnly cookie\n3. Clears `accessToken` from the Postman environment"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "3. 2FA (Two-Factor Auth)",
+      "item": [
+        {
+          "name": "Setup 2FA (get QR code)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('QR code and secret returned', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.true;",
+                  "    pm.expect(json.data).to.have.property('qrCodeUrl');",
+                  "    pm.expect(json.data).to.have.property('manualEntryKey');",
+                  "    // Save the manual key for reference",
+                  "    pm.environment.set('twoFaManualKey', json.data.manualEntryKey);",
+                  "    console.log('📱 Scan the QR code OR manually enter key:', json.data.manualEntryKey);",
+                  "    console.log('QR code data URL is in json.data.qrCodeUrl');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/2fa/setup",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "2fa", "setup"]
+            },
+            "description": "Generates a TOTP secret for the authenticated user and returns a QR code (data URL) + manual entry key.\n\n**Next step:** Scan the QR code in Google Authenticator / Authy, then call **Enable 2FA** with the 6-digit code."
+          },
+          "response": []
+        },
+        {
+          "name": "Enable 2FA (confirm TOTP code)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('2FA enabled', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.true;",
+                  "    console.log('✅ 2FA enabled successfully:', json.message);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"totpCode\": \"{{totpCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/2fa/enable",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "2fa", "enable"]
+            },
+            "description": "Activates 2FA for the account using the first valid TOTP code from the authenticator app.\n\n1. Run **Setup 2FA** first\n2. Open Google Authenticator / Authy\n3. Enter the 6-digit code in the `totpCode` environment variable\n4. Run this request"
+          },
+          "response": []
+        },
+        {
+          "name": "Verify 2FA (complete login)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Full tokens issued after 2FA', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.true;",
+                  "    pm.expect(json.data.accessToken).to.be.a('string');",
+                  "    pm.environment.set('accessToken', json.data.accessToken);",
+                  "    console.log('🎉 2FA login complete! accessToken saved.');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"tempToken\": \"{{tempToken}}\",\n    \"totpCode\": \"{{totpCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/2fa/verify",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "2fa", "verify"]
+            },
+            "description": "Completes a 2FA login. Use this when **Login** returns `{ requiresTwoFactor: true, tempToken: '...' }`.\n\n- `tempToken` is saved automatically by the Login request\n- `totpCode` must be the current 6-digit code from your authenticator app"
+          },
+          "response": []
+        },
+        {
+          "name": "Disable 2FA",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('2FA disabled', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.true;",
+                  "    console.log('✅ 2FA disabled:', json.message);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"password\": \"SecurePass123!\",\n    \"totpCode\": \"{{totpCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/2fa/disable",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "2fa", "disable"]
+            },
+            "description": "Disables 2FA. Requires the current account password AND a valid TOTP code (double confirmation to prevent account takeover)."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "4. Admin (ADMIN role required)",
+      "item": [
+        {
+          "name": "List All Users",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Paginated users list returned', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.true;",
+                  "    pm.expect(json.data).to.be.an('array');",
+                  "    pm.expect(json.pagination).to.have.all.keys(['page', 'limit', 'total', 'totalPages']);",
+                  "    console.log(`📋 ${json.data.length} users returned (total: ${json.pagination.total})`);",
+                  "    // Auto-save first user's ID for other admin tests",
+                  "    if (json.data.length > 0) {",
+                  "        const nonAdminUser = json.data.find(u => u.role !== 'ADMIN');",
+                  "        if (nonAdminUser) {",
+                  "            pm.environment.set('targetUserId', nonAdminUser.id);",
+                  "            console.log('💾 targetUserId saved (non-admin):', nonAdminUser.id, '(' + nonAdminUser.email + ')');",
+                  "        }",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminAccessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/users?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "users"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "description": "Search by name or email",
+                  "disabled": true
+                },
+                {
+                  "key": "role",
+                  "value": "CANDIDATE",
+                  "description": "Filter by role: CANDIDATE | RECRUITER | ADMIN",
+                  "disabled": true
+                },
+                {
+                  "key": "status",
+                  "value": "ACTIVE",
+                  "description": "Filter by status: ACTIVE | SUSPENDED | PENDING_VERIFICATION",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Returns paginated list of all users. Supports query params:\n- `page` (default: 1)\n- `limit` (default: 20, max: 100)\n- `search` - searches name and email\n- `role` - filter by CANDIDATE | RECRUITER | ADMIN\n- `status` - filter by ACTIVE | SUSPENDED | PENDING_VERIFICATION\n\nAlso auto-saves a non-admin `targetUserId` for the status-change test."
+          },
+          "response": []
+        },
+        {
+          "name": "List Users — Search + Filter",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Filtered results returned', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.true;",
+                  "    console.log(`🔍 Filtered users: ${json.data.length} results`);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminAccessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/users?search=jane&role=CANDIDATE&page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "users"],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "jane"
+                },
+                {
+                  "key": "role",
+                  "value": "CANDIDATE"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Tests the search and filter capabilities of the user list endpoint."
+          },
+          "response": []
+        },
+        {
+          "name": "Get User by ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('User detail returned', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.true;",
+                  "    pm.expect(json.data.id).to.be.a('string');",
+                  "    pm.expect(json.data._count).to.have.all.keys(['loginAttempts', 'refreshTokens']);",
+                  "    console.log('User detail:', JSON.stringify(json.data, null, 2));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminAccessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/users/{{targetUserId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "users", "{{targetUserId}}"]
+            },
+            "description": "Returns full details of a specific user including login attempt and refresh token counts.\n\n`targetUserId` is auto-populated by the **List All Users** test script."
+          },
+          "response": []
+        },
+        {
+          "name": "Get User by ID — Not Found",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 404', () => pm.response.to.have.status(404));",
+                  "pm.test('Not found error returned', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.false;",
+                  "    console.log('Expected 404 error:', json.message);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminAccessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/users/nonexistent-id-00000000",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "users", "nonexistent-id-00000000"]
+            },
+            "description": "Tests the 404 response for a non-existent user ID."
+          },
+          "response": []
+        },
+        {
+          "name": "Update User Status (Suspend)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('User suspended', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.true;",
+                  "    pm.expect(json.data.status).to.eql('SUSPENDED');",
+                  "    console.log('🚫 User suspended:', json.data.email);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminAccessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"status\": \"SUSPENDED\",\n    \"reason\": \"Violated terms of service during testing\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/users/{{targetUserId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "users", "{{targetUserId}}", "status"]
+            },
+            "description": "Suspends the target user. This also revokes all their active refresh tokens (forced logout).\n\n**Status values:** `ACTIVE` | `SUSPENDED` | `PENDING_VERIFICATION`"
+          },
+          "response": []
+        },
+        {
+          "name": "Update User Status (Re-activate)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('User reactivated', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.true;",
+                  "    pm.expect(json.data.status).to.eql('ACTIVE');",
+                  "    console.log('✅ User reactivated:', json.data.email);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminAccessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"status\": \"ACTIVE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/users/{{targetUserId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "users", "{{targetUserId}}", "status"]
+            },
+            "description": "Re-activates a previously suspended user."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Own Status (self-lockout guard test)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400 (cannot change own status)', () => pm.response.to.have.status(400));",
+                  "pm.test('Self-lockout prevented', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.false;",
+                  "    console.log('Self-lockout guard PASSED. Message:', json.message);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminAccessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"status\": \"SUSPENDED\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/users/{{userId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "users", "{{userId}}", "status"]
+            },
+            "description": "Tries to suspend the admin's OWN account. Should return 400 due to the self-lockout guard.\n\n`userId` is saved by the **Get My Profile** test after admin login."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Audit Logs",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Audit logs returned', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.true;",
+                  "    pm.expect(json.data).to.be.an('array');",
+                  "    console.log(`📝 ${json.data.length} audit log entries (total: ${json.pagination.total})`);",
+                  "    if (json.data.length > 0) {",
+                  "        console.log('Latest event:', json.data[0].event, 'at', json.data[0].createdAt);",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminAccessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/audit-logs?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "audit-logs"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "event",
+                  "value": "USER_LOGIN",
+                  "description": "Filter by event type e.g. USER_LOGIN, USER_REGISTERED, PASSWORD_RESET",
+                  "disabled": true
+                },
+                {
+                  "key": "userId",
+                  "value": "{{targetUserId}}",
+                  "description": "Filter by specific user ID",
+                  "disabled": true
+                },
+                {
+                  "key": "startDate",
+                  "value": "2024-01-01T00:00:00.000Z",
+                  "description": "ISO 8601 start date",
+                  "disabled": true
+                },
+                {
+                  "key": "endDate",
+                  "value": "2024-12-31T23:59:59.999Z",
+                  "description": "ISO 8601 end date",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Returns paginated audit logs. Supports filtering by:\n- `event` (e.g., `USER_LOGIN`, `USER_REGISTERED`, `PASSWORD_RESET`, `TOKEN_REFRESHED`)\n- `userId`\n- `startDate` / `endDate` (ISO 8601)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Login Attempts",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Login attempts returned', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.true;",
+                  "    pm.expect(json.data).to.be.an('array');",
+                  "    console.log(`🔐 ${json.data.length} login attempts (total: ${json.pagination.total})`);",
+                  "    if (json.data.length > 0) {",
+                  "        const failed = json.data.filter(a => !a.success).length;",
+                  "        console.log(`   ❌ Failed: ${failed} | ✅ Successful: ${json.data.length - failed}`);",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminAccessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/login-attempts?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "login-attempts"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "userId",
+                  "value": "{{targetUserId}}",
+                  "description": "Filter attempts for a specific user",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Returns paginated login attempt history. Useful for auditing brute-force attempts. Can filter by `userId`."
+          },
+          "response": []
+        },
+        {
+          "name": "Admin — Non-admin Access (403 test)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 403 Forbidden', () => pm.response.to.have.status(403));",
+                  "pm.test('Authorization error returned', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.false;",
+                  "    console.log('Expected 403 error:', json.message);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/users",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "users"]
+            },
+            "description": "Uses the candidate `accessToken` (not admin) to hit an admin-only endpoint. Expects 403 Forbidden."
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    }
+  ]
+}

@@ -1,0 +1,132 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                      String                   @id @default(cuid())
+  firstName               String                   @map("first_name") @db.VarChar(100)
+  lastName                String                   @map("last_name") @db.VarChar(100)
+  email                   String                   @unique @db.VarChar(255)
+  phone                   String?                  @unique @db.VarChar(20)
+  passwordHash            String?                  @map("password_hash")
+  role                    Role                     @default(CANDIDATE)
+  status                  UserStatus               @default(PENDING_VERIFICATION)
+  isEmailVerified         Boolean                  @map("is_email_verified") @default(false)
+  isTwoFactorEnabled      Boolean                  @map("is_two_factor_enabled") @default(false)
+  twoFactorSecret         String?                  @map("two_factor_secret")
+  lastLoginAt             DateTime?                @map("last_login_at")
+  createdAt               DateTime                 @map("created_at") @default(now())
+  updatedAt               DateTime                 @map("updated_at") @updatedAt
+  avatarUrl               String?                  @map("avatar_url")
+  githubId                String?                  @map("github_id") @unique
+  googleId                String?                  @map("google_id") @unique
+  linkedinId              String?                  @map("linkedin_id") @unique
+  auditLogs               AuditLog[]
+  emailVerificationTokens EmailVerificationToken[]
+  loginAttempts           LoginAttempt[]
+  passwordResetTokens     PasswordResetToken[]
+  refreshTokens           RefreshToken[]
+
+  @@index([email])
+  @@index([phone])
+  @@index([status])
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  tokenHash String   @map("token_hash") @unique
+  family    String
+  expiresAt DateTime @map("expires_at")
+  revoked   Boolean  @default(false)
+  ipAddress String?  @map("ip_address") @db.VarChar(45)
+  userAgent String?  @map("user_agent") @db.VarChar(500)
+  createdAt DateTime @map("created_at") @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tokenHash])
+  @@index([family])
+  @@index([userId])
+  @@index([revoked])
+  @@map("refresh_tokens")
+}
+
+model EmailVerificationToken {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  tokenHash String   @map("token_hash") @unique
+  expiresAt DateTime @map("expires_at")
+  used      Boolean  @default(false)
+  createdAt DateTime @map("created_at") @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tokenHash])
+  @@index([userId])
+  @@map("email_verification_tokens")
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  tokenHash String   @map("token_hash") @unique
+  expiresAt DateTime @map("expires_at")
+  used      Boolean  @default(false)
+  createdAt DateTime @map("created_at") @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tokenHash])
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?  @map("user_id")
+  event     String   @db.VarChar(100)
+  ipAddress String?  @map("ip_address") @db.VarChar(45)
+  userAgent String?  @map("user_agent") @db.VarChar(500)
+  metadata  String?  @db.LongText
+  createdAt DateTime @map("created_at") @default(now())
+  user      User?    @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([event])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model LoginAttempt {
+  id            String   @id @default(cuid())
+  userId        String?  @map("user_id")
+  email         String   @db.VarChar(255)
+  ipAddress     String   @map("ip_address") @db.VarChar(45)
+  success       Boolean
+  failureReason String?  @map("failure_reason") @db.VarChar(200)
+  createdAt     DateTime @map("created_at") @default(now())
+  user          User?    @relation(fields: [userId], references: [id])
+
+  @@index([email, ipAddress])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("login_attempts")
+}
+
+enum Role {
+  CANDIDATE
+  RECRUITER
+  ADMIN
+}
+
+enum UserStatus {
+  PENDING_VERIFICATION
+  PENDING_APPROVAL
+  ACTIVE
+  SUSPENDED
+  DELETED
+}

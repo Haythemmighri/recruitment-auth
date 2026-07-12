@@ -1,0 +1,894 @@
+{
+  "info": {
+    "name": "Recruitment Auth API — Laravel",
+    "description": "Full API collection for the Laravel recruitment authentication backend. Base URL: http://localhost:8000/api\n\nFlow:\n1. Register → verify email → login → use access_token for protected routes.\n2. Admin routes require an ADMIN-role account.\n3. The refresh token is stored automatically as an HttpOnly cookie by Postman.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000/api",
+      "type": "string",
+      "description": "Laravel dev server base URL"
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string",
+      "description": "JWT access token — auto-set after Login"
+    },
+    {
+      "key": "admin_access_token",
+      "value": "",
+      "type": "string",
+      "description": "JWT access token for admin — auto-set after Admin Login"
+    },
+    {
+      "key": "temp_token",
+      "value": "",
+      "type": "string",
+      "description": "Temporary token for 2FA flow — auto-set after login with 2FA"
+    },
+    {
+      "key": "session_family",
+      "value": "",
+      "type": "string",
+      "description": "Session family ID — auto-set after Get Sessions"
+    }
+  ],
+  "item": [
+    {
+      "name": "🔐 Auth",
+      "description": "Core authentication endpoints — register, login, logout, token refresh, email verification, password reset",
+      "item": [
+        {
+          "name": "1. Register User",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"firstName\": \"John\",\n    \"lastName\": \"Doe\",\n    \"email\": \"john@example.com\",\n    \"password\": \"SecurePass123!\",\n    \"role\": \"CANDIDATE\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/register",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "register"]
+            },
+            "description": "Register a new user. An email verification link will be sent to the provided email.\n\n**Role options:** `CANDIDATE`, `RECRUITER`, `ADMIN`\n\n**Note:** Account status will be `PENDING_VERIFICATION` until the email is verified."
+          }
+        },
+        {
+          "name": "2. Register Admin (for testing)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"firstName\": \"Admin\",\n    \"lastName\": \"User\",\n    \"email\": \"admin@example.com\",\n    \"password\": \"AdminPass123!\",\n    \"role\": \"ADMIN\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/register",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "register"]
+            },
+            "description": "Register an admin account for testing admin-only endpoints."
+          }
+        },
+        {
+          "name": "3. Verify Email (manual — use token from email)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/verify-email?token=PASTE_TOKEN_FROM_EMAIL_HERE",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "verify-email"],
+              "query": [
+                {
+                  "key": "token",
+                  "value": "PASTE_TOKEN_FROM_EMAIL_HERE",
+                  "description": "Raw token from the verification email link"
+                }
+              ]
+            },
+            "description": "Verify the email address using the token received in the verification email.\n\n**Tip:** After registration, check the email inbox (or Laravel logs if using file mailer) for the token, then paste it above."
+          }
+        },
+        {
+          "name": "4. Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data.accessToken) {",
+                  "    pm.collectionVariables.set('access_token', jsonData.data.accessToken);",
+                  "    console.log('✅ access_token saved:', jsonData.data.accessToken.substring(0,30) + '...');",
+                  "} else if (jsonData.data && jsonData.data.requiresTwoFactor) {",
+                  "    pm.collectionVariables.set('temp_token', jsonData.data.tempToken);",
+                  "    console.log('⚠️ 2FA required. temp_token saved. Use the 2FA Verify endpoint next.');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"john@example.com\",\n    \"password\": \"SecurePass123!\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Login with email and password.\n\n**On success:** `access_token` collection variable is automatically set.\n**Refresh token** is set as an HttpOnly cookie (Postman handles this automatically).\n\n**If 2FA is enabled:** Returns `requiresTwoFactor: true` and a `tempToken`. Use the `2FA Verify` endpoint next."
+          }
+        },
+        {
+          "name": "5. Login — Admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data.accessToken) {",
+                  "    pm.collectionVariables.set('admin_access_token', jsonData.data.accessToken);",
+                  "    console.log('✅ admin_access_token saved');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"admin@example.com\",\n    \"password\": \"AdminPass123!\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Login as admin. Saves `admin_access_token` for use in admin endpoints."
+          }
+        },
+        {
+          "name": "6. Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data.accessToken) {",
+                  "    pm.collectionVariables.set('access_token', jsonData.data.accessToken);",
+                  "    console.log('✅ access_token refreshed');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/refresh",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "refresh"]
+            },
+            "description": "Refresh the access token using the `refreshToken` HttpOnly cookie.\n\n**Postman automatically sends** the cookie set during login.\n\nThe old refresh token is rotated (revoked) and a new one is issued."
+          }
+        },
+        {
+          "name": "7. Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/logout",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "logout"]
+            },
+            "description": "Logout and revoke the current refresh token.\n\nThe `refreshToken` cookie is cleared from the response."
+          }
+        },
+        {
+          "name": "8. Forgot Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"john@example.com\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/forgot-password",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "forgot-password"]
+            },
+            "description": "Request a password reset email.\n\n**Security:** Always returns a 200 with a generic message regardless of whether the email exists (prevents user enumeration)."
+          }
+        },
+        {
+          "name": "9. Reset Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"token\": \"PASTE_RESET_TOKEN_FROM_EMAIL_HERE\",\n    \"newPassword\": \"NewSecurePass456!\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/reset-password",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "reset-password"]
+            },
+            "description": "Reset the user password using the token from the reset email.\n\nAfter a successful reset, all active refresh tokens for the user are revoked."
+          }
+        },
+        {
+          "name": "10. Get CSRF Token",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/csrf-token",
+              "host": ["{{base_url}}"],
+              "path": ["csrf-token"]
+            },
+            "description": "Generates a custom CSRF token. The raw token is returned in the response body, while its hash is set as a cookie.\n\nUsed by the SPA frontend for state-changing requests when CSRF protection is needed."
+          }
+        },
+        {
+          "name": "11. OAuth Token Exchange",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"refreshToken\": \"PASTE_REFRESH_TOKEN_HERE\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/oauth-token-exchange",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "oauth-token-exchange"]
+            },
+            "description": "Exchanges a refresh token passed in the request body and re-sets it as a proper HttpOnly cookie.\n\nRequired because browsers silently drop `Set-Cookie` headers from cross-origin OAuth redirects."
+          }
+        }
+      ]
+    },
+    {
+      "name": "🔑 Two-Factor Auth (2FA)",
+      "description": "TOTP-based two-factor authentication setup, verification and management",
+      "item": [
+        {
+          "name": "1. 2FA Setup (get QR code)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/2fa/setup",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "2fa", "setup"]
+            },
+            "description": "Initialize 2FA for the authenticated user.\n\n**Returns:** A `otpauth://` URL (scan with Google Authenticator or Authy) and a QR code image.\n\n**Requires:** Valid `access_token`."
+          }
+        },
+        {
+          "name": "2. 2FA Enable (confirm with TOTP code)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"totpCode\": \"123456\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/2fa/enable",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "2fa", "enable"]
+            },
+            "description": "Enable 2FA by confirming with a valid TOTP code from your authenticator app.\n\n**Requires:** Valid `access_token` + TOTP code from setup QR scan."
+          }
+        },
+        {
+          "name": "3. 2FA Disable",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"password\": \"SecurePass123!\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/2fa/disable",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "2fa", "disable"]
+            },
+            "description": "Disable 2FA. Requires the user's current password for confirmation.\n\n**Requires:** Valid `access_token` + current password."
+          }
+        },
+        {
+          "name": "4. 2FA Verify (after login)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data.accessToken) {",
+                  "    pm.collectionVariables.set('access_token', jsonData.data.accessToken);",
+                  "    console.log('✅ 2FA verified — access_token saved');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"tempToken\": \"{{temp_token}}\",\n    \"totpCode\": \"123456\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/2fa/verify",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "2fa", "verify"]
+            },
+            "description": "Complete the 2FA login step.\n\n**When to use:** After receiving `requiresTwoFactor: true` from the Login endpoint.\n\n- `tempToken`: Auto-filled from collection variable (set by Login)\n- `totpCode`: 6-digit code from email or authenticator app\n\n**On success:** `access_token` is saved automatically."
+          }
+        }
+      ]
+    },
+    {
+      "name": "🌐 OAuth (Social Login)",
+      "description": "OAuth login with Google, GitHub, and LinkedIn",
+      "item": [
+        {
+          "name": "1. Google — Redirect (open in browser)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/oauth/google",
+              "host": ["{{base_url}}"],
+              "path": ["oauth", "google"]
+            },
+            "description": "Initiates the Google OAuth flow. Open this URL in a browser — it will redirect to Google's consent screen.\n\n**Note:** After consent, Google redirects to `/oauth/google/callback` which issues tokens and redirects to the frontend."
+          }
+        },
+        {
+          "name": "2. GitHub — Redirect (open in browser)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/oauth/github",
+              "host": ["{{base_url}}"],
+              "path": ["oauth", "github"]
+            },
+            "description": "Initiates the GitHub OAuth flow. Open this URL in a browser."
+          }
+        },
+        {
+          "name": "3. LinkedIn — Redirect (open in browser)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/oauth/linkedin",
+              "host": ["{{base_url}}"],
+              "path": ["oauth", "linkedin"]
+            },
+            "description": "Initiates the LinkedIn OAuth flow. Open this URL in a browser."
+          }
+        },
+        {
+          "name": "4. Google — Mock Callback (dev testing)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// OAuth mock returns redirect, not JSON. Check the Location header.",
+                  "console.log('Response status:', pm.response.code);",
+                  "var location = pm.response.headers.get('Location');",
+                  "if (location) {",
+                  "    console.log('Redirect location:', location);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/oauth/google/mock",
+              "host": ["{{base_url}}"],
+              "path": ["oauth", "google", "mock"]
+            },
+            "description": "Mock OAuth callback for **development testing** — simulates a Google OAuth callback without real OAuth flow.\n\nAvailable providers: `google`, `github`, `linkedin`"
+          }
+        },
+        {
+          "name": "5. GitHub — Mock Callback (dev testing)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/oauth/github/mock",
+              "host": ["{{base_url}}"],
+              "path": ["oauth", "github", "mock"]
+            }
+          }
+        },
+        {
+          "name": "6. LinkedIn — Mock Callback (dev testing)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/oauth/linkedin/mock",
+              "host": ["{{base_url}}"],
+              "path": ["oauth", "linkedin", "mock"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "👤 User (Protected)",
+      "description": "User profile and session management. Requires a valid access_token from Login.",
+      "item": [
+        {
+          "name": "1. Get My Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/users/me",
+              "host": ["{{base_url}}"],
+              "path": ["users", "me"]
+            },
+            "description": "Retrieve the authenticated user's profile.\n\n**Returns:** id, firstName, lastName, email, phone, role, status, isEmailVerified, isTwoFactorEnabled, avatarUrl, lastLoginAt, createdAt"
+          }
+        },
+        {
+          "name": "2. Update My Profile",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"firstName\": \"Johnny\",\n    \"lastName\": \"Doe\",\n    \"phone\": \"+1234567890\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/users/me",
+              "host": ["{{base_url}}"],
+              "path": ["users", "me"]
+            },
+            "description": "Update the authenticated user's profile details.\n\n**Updatable fields:** `firstName`, `lastName`, `phone` (can be set to null)"
+          }
+        },
+        {
+          "name": "3. Get Active Sessions",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data.length > 0) {",
+                  "    var family = jsonData.data[0].family;",
+                  "    pm.collectionVariables.set('session_family', family);",
+                  "    console.log('✅ session_family saved:', family);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/users/me/sessions",
+              "host": ["{{base_url}}"],
+              "path": ["users", "me", "sessions"]
+            },
+            "description": "List all active (non-expired, non-revoked) sessions for the authenticated user.\n\n**Returns:** family, ipAddress, userAgent, lastActive for each session.\n\nThe first session's `family` is automatically saved to the `session_family` variable."
+          }
+        },
+        {
+          "name": "4. Revoke a Session",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/users/me/sessions/{{session_family}}",
+              "host": ["{{base_url}}"],
+              "path": ["users", "me", "sessions", "{{session_family}}"]
+            },
+            "description": "Revoke a specific session by its family ID.\n\n`session_family` is auto-filled from the `Get Active Sessions` request. You can also paste a family ID manually.\n\nThis forces logout of the device associated with that session."
+          }
+        }
+      ]
+    },
+    {
+      "name": "🛡️ Admin (Protected — ADMIN role only)",
+      "description": "Admin-only endpoints for user management and system monitoring. Requires admin_access_token.",
+      "item": [
+        {
+          "name": "1. Get All Users",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{admin_access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/users?page=1&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "users"],
+              "query": [
+                { "key": "page", "value": "1", "description": "Page number (default: 1)" },
+                { "key": "limit", "value": "10", "description": "Results per page (1–100, default: 10)" },
+                { "key": "role", "value": "CANDIDATE", "description": "Filter by role: CANDIDATE, RECRUITER, ADMIN", "disabled": true },
+                { "key": "status", "value": "ACTIVE", "description": "Filter by status: ACTIVE, SUSPENDED, DELETED, PENDING_VERIFICATION", "disabled": true },
+                { "key": "search", "value": "john", "description": "Search by email, firstName, or lastName", "disabled": true }
+              ]
+            },
+            "description": "Retrieve a paginated list of all users.\n\n**Filters (all optional):** role, status, search\n\n**Returns:** Paginated user list with metadata (total, page, limit, pages)"
+          }
+        },
+        {
+          "name": "2. Get All Users — filtered by role",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{admin_access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/users?role=CANDIDATE&limit=5",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "users"],
+              "query": [
+                { "key": "role", "value": "CANDIDATE" },
+                { "key": "limit", "value": "5" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "3. Update User Status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{admin_access_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"status\": \"SUSPENDED\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/users/USER_ID_HERE/status",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "users", "USER_ID_HERE", "status"]
+            },
+            "description": "Update a user's account status.\n\n**Valid statuses:** `ACTIVE`, `SUSPENDED`, `DELETED`, `PENDING_VERIFICATION`\n\n**Note:** Suspending or deleting a user also revokes all their active refresh tokens (forces logout).\n\nReplace `USER_ID_HERE` with the actual user ID from the Get Users response."
+          }
+        },
+        {
+          "name": "4. Activate User",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{admin_access_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"status\": \"ACTIVE\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/users/USER_ID_HERE/status",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "users", "USER_ID_HERE", "status"]
+            },
+            "description": "Re-activate a previously suspended or deleted user.\n\nReplace `USER_ID_HERE` with the actual user ID."
+          }
+        },
+        {
+          "name": "5. Get System Stats",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{admin_access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/system/stats",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "system", "stats"]
+            },
+            "description": "Get platform-wide statistics.\n\n**Returns:**\n- `totalUsers`, `activeUsers`, `suspendedUsers`\n- `roles`: breakdown by ADMIN / RECRUITER / CANDIDATE\n- `security`: verifiedUsers, twoFactorEnabled count\n- `activity24h`: successfulLogins and failedLogins in the last 24 hours"
+          }
+        },
+        {
+          "name": "6. Get Audit Logs",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{admin_access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/system/audit-logs?page=1&limit=20",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "system", "audit-logs"],
+              "query": [
+                { "key": "page", "value": "1", "description": "Page number" },
+                { "key": "limit", "value": "20", "description": "Logs per page (max 100)" },
+                { "key": "userId", "value": "USER_ID_HERE", "description": "Filter by user ID", "disabled": true },
+                { "key": "event", "value": "USER_LOGIN", "description": "Filter by event type", "disabled": true }
+              ]
+            },
+            "description": "Retrieve paginated audit logs with optional filters.\n\n**Event types you can filter by:**\n`USER_REGISTERED`, `USER_LOGIN`, `USER_LOGOUT`, `TOKEN_REFRESHED`, `EMAIL_VERIFIED`, `PASSWORD_RESET_REQUESTED`, `PASSWORD_RESET`, `TWO_FACTOR_SETUP`, `TWO_FACTOR_ENABLED`, `TWO_FACTOR_DISABLED`, `TWO_FACTOR_LOGIN`, `PROFILE_UPDATED`, `ADMIN_USER_STATUS_CHANGED`"
+          }
+        },
+        {
+          "name": "7. Get Audit Logs — filtered by event",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{admin_access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/system/audit-logs?event=USER_LOGIN&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "system", "audit-logs"],
+              "query": [
+                { "key": "event", "value": "USER_LOGIN" },
+                { "key": "limit", "value": "10" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🧪 Error Scenarios",
+      "description": "Test expected error responses for validation and authentication failures",
+      "item": [
+        {
+          "name": "Register — Validation Error (missing fields)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"not-an-email\",\n    \"password\": \"weak\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/register",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "register"]
+            },
+            "description": "Expected: **422 Unprocessable Entity** with validation errors for missing firstName, lastName, invalid email format, and weak password."
+          }
+        },
+        {
+          "name": "Login — Wrong Credentials",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"john@example.com\",\n    \"password\": \"WrongPassword!\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Expected: **401 Unauthorized** — `Invalid email or password`"
+          }
+        },
+        {
+          "name": "Protected Route — No Token",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/users/me",
+              "host": ["{{base_url}}"],
+              "path": ["users", "me"]
+            },
+            "description": "Expected: **401 Unauthorized** — no Authorization header provided."
+          }
+        },
+        {
+          "name": "Protected Route — Expired/Invalid Token",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.INVALID" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/users/me",
+              "host": ["{{base_url}}"],
+              "path": ["users", "me"]
+            },
+            "description": "Expected: **401 Unauthorized** — token verification failed."
+          }
+        },
+        {
+          "name": "Admin Route — With Candidate Token (Forbidden)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/users",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "users"]
+            },
+            "description": "Expected: **403 Forbidden** — the candidate token does not have ADMIN role access."
+          }
+        },
+        {
+          "name": "Admin — Update User Status (Invalid Status)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{admin_access_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"status\": \"INVALID_STATUS\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/users/SOME_ID/status",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "users", "SOME_ID", "status"]
+            },
+            "description": "Expected: **400 Bad Request** — `Invalid status`"
+          }
+        },
+        {
+          "name": "Refresh Token — No Cookie",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/refresh",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "refresh"]
+            },
+            "description": "Expected: **401 Unauthorized** — `Refresh token not found. Please log in.`\n\n(Clear cookies first or use a fresh Postman request with no cookies)"
+          }
+        }
+      ]
+    }
+  ]
+}
