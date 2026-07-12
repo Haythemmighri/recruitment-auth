@@ -193,3 +193,120 @@ flowchart LR
     A --> App
     A --> M
 ```
+
+## 6. Class Diagram
+
+Based on the actual C# entity classes in the `Domain` layer and service interfaces in the `Application` layer.
+
+```mermaid
+classDiagram
+    class User {
+        +string Id
+        +string FirstName
+        +string LastName
+        +string Email
+        +string? Phone
+        +string? PasswordHash
+        +string Role
+        +string Status
+        +bool IsEmailVerified
+        +bool IsTwoFactorEnabled
+        +string? TwoFactorSecret
+        +DateTime? LastLoginAt
+        +string? AvatarUrl
+        +string? GithubId
+        +string? GoogleId
+        +string? LinkedinId
+        +DateTime CreatedAt
+        +DateTime UpdatedAt
+    }
+
+    class RefreshToken {
+        +string Id
+        +string UserId
+        +string TokenHash
+        +string Family
+        +DateTime ExpiresAt
+        +bool Revoked
+        +string? IpAddress
+        +string? UserAgent
+        +DateTime CreatedAt
+    }
+
+    class EmailVerificationToken {
+        +string Id
+        +string UserId
+        +string TokenHash
+        +DateTime ExpiresAt
+        +bool Used
+        +DateTime CreatedAt
+    }
+
+    class PasswordResetToken {
+        +string Id
+        +string UserId
+        +string TokenHash
+        +DateTime ExpiresAt
+        +bool Used
+        +DateTime CreatedAt
+    }
+
+    class AuditLog {
+        +string Id
+        +string? UserId
+        +string Event
+        +string? IpAddress
+        +string? UserAgent
+        +string? Metadata
+        +DateTime CreatedAt
+    }
+
+    class LoginAttempt {
+        +string Id
+        +string? UserId
+        +string Email
+        +string IpAddress
+        +bool Success
+        +string? FailureReason
+        +DateTime CreatedAt
+    }
+
+    class IAuthService {
+        <<interface>>
+        +RegisterAsync(request, ip, ua) AuthResponse
+        +LoginAsync(request, ip, ua) LoginResult
+        +RefreshTokenAsync(token, ip, ua) AuthResponse
+        +LogoutAsync(refreshToken)
+        +VerifyEmailAsync(token) bool
+        +ForgotPasswordAsync(email, ip)
+        +ResetPasswordAsync(token, password)
+        +GetCurrentUserAsync(userId) UserDto
+        +VerifyTwoFactorAsync(tempToken, code, ip, ua) AuthResponse
+        +SetupTwoFactorAsync(userId) object
+        +EnableTwoFactorAsync(userId, code) object
+        +DisableTwoFactorAsync(userId, password) object
+    }
+
+    class ITokenService {
+        <<interface>>
+        +GenerateAccessToken(user) string
+        +GenerateRefreshToken(userId, family) string
+        +ValidateRefreshToken(token) ClaimsPrincipal
+    }
+
+    class IEmailService {
+        <<interface>>
+        +SendVerificationEmailAsync(to, name, token)
+        +SendPasswordResetEmailAsync(to, name, token)
+        +SendPasswordChangedEmailAsync(to, name)
+    }
+
+    User "1" --> "*" RefreshToken : has
+    User "1" --> "*" EmailVerificationToken : has
+    User "1" --> "*" PasswordResetToken : has
+    User "1" --> "*" AuditLog : has
+    User "1" --> "*" LoginAttempt : has
+    IAuthService ..> ITokenService : uses
+    IAuthService ..> IEmailService : uses
+```
+

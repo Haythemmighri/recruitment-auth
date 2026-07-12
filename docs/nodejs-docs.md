@@ -195,3 +195,120 @@ flowchart LR
     Reg -.->|Notifications| SmsEmail
     Res -.->|Notifications| SmsEmail
 ```
+
+## 6. Class Diagram
+
+Based on the actual Prisma schema (`schema.prisma`) and TypeScript service classes.
+
+```mermaid
+classDiagram
+    class User {
+        +String id
+        +String firstName
+        +String lastName
+        +String email
+        +String? phone
+        +String? passwordHash
+        +Role role
+        +UserStatus status
+        +Boolean isEmailVerified
+        +Boolean isTwoFactorEnabled
+        +String? twoFactorSecret
+        +DateTime? lastLoginAt
+        +String? avatarUrl
+        +String? githubId
+        +String? googleId
+        +String? linkedinId
+        +DateTime createdAt
+        +DateTime updatedAt
+    }
+
+    class RefreshToken {
+        +String id
+        +String userId
+        +String tokenHash
+        +String family
+        +DateTime expiresAt
+        +Boolean revoked
+        +String? ipAddress
+        +String? userAgent
+        +DateTime createdAt
+    }
+
+    class EmailVerificationToken {
+        +String id
+        +String userId
+        +String tokenHash
+        +DateTime expiresAt
+        +Boolean used
+        +DateTime createdAt
+    }
+
+    class PasswordResetToken {
+        +String id
+        +String userId
+        +String tokenHash
+        +DateTime expiresAt
+        +Boolean used
+        +DateTime createdAt
+    }
+
+    class AuditLog {
+        +String id
+        +String? userId
+        +String event
+        +String? ipAddress
+        +String? userAgent
+        +String? metadata
+        +DateTime createdAt
+    }
+
+    class LoginAttempt {
+        +String id
+        +String? userId
+        +String email
+        +String ipAddress
+        +Boolean success
+        +String? failureReason
+        +DateTime createdAt
+    }
+
+    class Role {
+        <<enumeration>>
+        CANDIDATE
+        RECRUITER
+        ADMIN
+    }
+
+    class UserStatus {
+        <<enumeration>>
+        PENDING_VERIFICATION
+        PENDING_APPROVAL
+        ACTIVE
+        SUSPENDED
+        DELETED
+    }
+
+    class AuthService {
+        +register(data, ip) Promise
+        +login(data, ip) Promise
+        +refreshToken(raw, ip) Promise
+        +logout(raw) Promise
+        +verifyEmail(token) Promise
+        +forgotPassword(email) Promise
+        +resetPassword(token, password) Promise
+        +setupTwoFactor(userId) Promise
+        +verifyTwoFactor(tempToken, code, ip) Promise
+        +enableTwoFactor(userId, code) Promise
+        +disableTwoFactor(userId, password) Promise
+    }
+
+    User "1" --> "*" RefreshToken : has
+    User "1" --> "*" EmailVerificationToken : has
+    User "1" --> "*" PasswordResetToken : has
+    User "1" --> "*" AuditLog : has
+    User "1" --> "*" LoginAttempt : has
+    User --> Role : uses
+    User --> UserStatus : uses
+    AuthService ..> User : manages
+```

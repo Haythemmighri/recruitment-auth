@@ -197,3 +197,122 @@ flowchart LR
     Reg -.->|Dispatch Job| Queue
     Reset -.->|Dispatch Job| Queue
 ```
+
+## 6. Class Diagram
+
+Based on the actual Eloquent Models and Service classes in the Laravel backend.
+
+```mermaid
+classDiagram
+    class User {
+        +string id
+        +string first_name
+        +string last_name
+        +string email
+        +string? phone
+        +string? password_hash
+        +string role
+        +string status
+        +bool is_email_verified
+        +bool is_two_factor_enabled
+        +string? two_factor_secret
+        +string? google_id
+        +string? github_id
+        +string? linkedin_id
+        +string? avatar_url
+        +DateTime? last_login_at
+        +getJWTIdentifier() mixed
+        +getJWTCustomClaims() array
+        +refreshTokens() HasMany
+        +emailVerificationTokens() HasMany
+        +passwordResetTokens() HasMany
+        +auditLogs() HasMany
+        +loginAttempts() HasMany
+    }
+
+    class RefreshToken {
+        +string id
+        +string user_id
+        +string token_hash
+        +string family
+        +DateTime expires_at
+        +bool revoked
+        +string? ip_address
+        +string? user_agent
+        +DateTime created_at
+    }
+
+    class EmailVerificationToken {
+        +string id
+        +string user_id
+        +string token_hash
+        +DateTime expires_at
+        +bool used
+        +DateTime created_at
+    }
+
+    class PasswordResetToken {
+        +string id
+        +string user_id
+        +string token_hash
+        +DateTime expires_at
+        +bool used
+        +DateTime created_at
+    }
+
+    class LoginAttempt {
+        +string id
+        +string? user_id
+        +string email
+        +string ip_address
+        +bool success
+        +string? failure_reason
+        +DateTime created_at
+    }
+
+    class AuditLog {
+        +string id
+        +string? user_id
+        +string event
+        +string? ip_address
+        +string? details
+        +DateTime created_at
+    }
+
+    class AuthService {
+        -TokenService tokenService
+        -EmailService emailService
+        +register(data) array
+        +verifyEmail(token) array
+        +login(data, ip, ua) array
+        +refreshToken(raw, ip, ua) array
+        +logout(rawToken) array
+        +forgotPassword(email) array
+        +resetPassword(token, newPassword) array
+    }
+
+    class TokenService {
+        +issueTokenPair(userId, email, role, ip, ua, family) array
+        +signTempToken(userId) string
+        +verifyTempToken(token) object
+        +verifyRefreshToken(raw) object
+        +revokeTokenFamily(family)
+    }
+
+    class TwoFactorService {
+        +setup(userId) array
+        +enable(userId, code) array
+        +disable(userId, password) array
+        +verify(userId, code) bool
+    }
+
+    User "1" --> "*" RefreshToken : hasMany
+    User "1" --> "*" EmailVerificationToken : hasMany
+    User "1" --> "*" PasswordResetToken : hasMany
+    User "1" --> "*" LoginAttempt : hasMany
+    User "1" --> "*" AuditLog : hasMany
+    AuthService --> TokenService : uses
+    AuthService --> EmailService : uses
+    TwoFactorService --> User : manages
+```
+
