@@ -63,3 +63,44 @@ flowchart TD
 
 ### Admin & User Management
 - Controllers available for administrators to manage users (e.g., approving accounts) and for users to retrieve their own profiles.
+
+## 5. Use Case Diagram
+
+The following diagram illustrates the primary use cases and actors interacting with the ASP.NET backend.
+
+```mermaid
+flowchart LR
+    %% Actors
+    U([Candidate / User])
+    A([Administrator])
+    OAuth([OAuth Providers])
+    Email([SMTP Service])
+
+    %% Use Cases
+    subgraph ASP.NET Auth System
+        R(Register)
+        VE(Verify Email)
+        L(Login via JWT)
+        TFA(TOTP 2FA Verification)
+        PR(Password Reset)
+        SL(Social Login)
+        M(Manage Profile)
+        App(Approve Accounts)
+    end
+
+    %% Relationships
+    U --> R
+    U --> VE
+    U --> L
+    U --> TFA
+    U --> PR
+    U --> SL
+    U --> M
+
+    SL -.->|Authenticates with| OAuth
+    R -.->|Sends Code via| Email
+    PR -.->|Sends Link via| Email
+
+    A --> App
+    A --> M
+```

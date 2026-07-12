@@ -59,3 +59,42 @@ flowchart TD
 
 ### External Communications
 - Dedicated `EmailService` and `SmsService` classes to handle transactional notifications.
+
+## 5. Use Case Diagram
+
+The following diagram illustrates the primary use cases and actors interacting with the Laravel backend.
+
+```mermaid
+flowchart LR
+    %% Actors
+    U([User])
+    A([Admin])
+    Socialite([Socialite Providers])
+    Queue([Redis Queue / Mailer])
+
+    %% Use Cases
+    subgraph Laravel Auth API
+        Reg(Register Account)
+        Verify(Verify Email Address)
+        Log(Login & Receive JWT)
+        TwoF(Manage/Verify Google2FA)
+        Reset(Forgot/Reset Password)
+        OAuth(Login with OAuth)
+        Audit(View Login Audits)
+    end
+
+    %% Relationships
+    U --> Reg
+    U --> Verify
+    U --> Log
+    U --> TwoF
+    U --> Reset
+    U --> OAuth
+    
+    A --> Audit
+    A --> Reg
+
+    OAuth -.->|Redirect/Callback| Socialite
+    Reg -.->|Dispatch Job| Queue
+    Reset -.->|Dispatch Job| Queue
+```

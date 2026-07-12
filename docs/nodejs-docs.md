@@ -65,3 +65,38 @@ flowchart TD
 
 ### Audit Logging
 - Immutable, append-only logs for all major security events (logins, password resets, token revocations).
+
+## 5. Use Case Diagram
+
+The following diagram illustrates the primary use cases and actors interacting with the Node.js backend.
+
+```mermaid
+flowchart LR
+    %% Actors
+    U([Client Application])
+    OAuth([Passport Providers])
+    SmsEmail([Nodemailer / Twilio])
+
+    %% Use Cases
+    subgraph Node.js Auth Backend
+        Reg(Register & Validate Schema)
+        Log(Login with Rate Limiting)
+        Tfa(Speakeasy TOTP 2FA)
+        Ref(Refresh Token Rotation)
+        Res(Password Reset)
+        Social(Passport.js Social Login)
+        Audit(Security Audit Logging)
+    end
+
+    %% Relationships
+    U --> Reg
+    U --> Log
+    U --> Tfa
+    U --> Ref
+    U --> Res
+    U --> Social
+
+    Social -.->|Tokens| OAuth
+    Reg -.->|Notifications| SmsEmail
+    Res -.->|Notifications| SmsEmail
+```
