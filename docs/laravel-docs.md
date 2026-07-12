@@ -2,6 +2,10 @@
 
 This document outlines everything we used and everything we implemented in the Laravel backend API.
 
+## Architecture & Use Case Diagram
+
+![Laravel Architecture & Use Case Diagram](laravel-diagram.png)
+
 ## 1. Architecture & Core Technologies
 - **Framework**: Laravel 13.x (running on PHP 8.3+).
 - **Architecture**: Laravel MVC structure strictly adhering to API best practices (FormRequests for validation, Service classes for business logic).

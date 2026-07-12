@@ -2,6 +2,10 @@
 
 This document outlines everything we used and everything we implemented in the Node.js backend application.
 
+## Architecture & Use Case Diagram
+
+![Node.js Architecture & Use Case Diagram](nodejs-diagram.png)
+
 ## 1. Architecture & Core Technologies
 - **Runtime & Framework**: Node.js 20+ with Express.js (`express`).
 - **Language**: Strictly typed **TypeScript**.

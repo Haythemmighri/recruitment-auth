@@ -2,6 +2,10 @@
 
 This document outlines everything we used and everything we implemented in the ASP.NET backend application.
 
+## Architecture & Use Case Diagram
+
+![ASP.NET Architecture & Use Case Diagram](aspnet-diagram.png)
+
 ## 1. Architecture & Core Technologies
 - **Framework**: .NET 10.0 (`net10.0`) Web API.
 - **Architecture**: **Clean Architecture** (divided into `API`, `Application`, `Domain`, and `Infrastructure` layers).
