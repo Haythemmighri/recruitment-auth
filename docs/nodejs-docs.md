@@ -66,6 +66,97 @@ flowchart TD
 ### Audit Logging
 - Immutable, append-only logs for all major security events (logins, password resets, token revocations).
 
+## 4. Sequence Diagrams
+
+### Login Flow (with Rate Limiting & optional 2FA)
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant MW as Middleware (RateLimit + Sanitize)
+    participant C as AuthController
+    participant S as AuthService
+    participant Redis as Redis (rate store)
+    participant DB as MySQL (Prisma)
+    participant Log as AuditLog
+
+    User->>MW: POST /auth/login {email, password}
+    MW->>Redis: Check login rate limit (IP + Email)
+    MW->>C: Passes Zod validation
+    C->>S: login(data, ip)
+    S->>DB: prisma.user.findUnique(email)
+    S->>S: argon2.verify(hash, password)
+    S->>Log: auditLog.create (success/fail)
+    alt 2FA Enabled
+        S->>DB: Create temp token entry
+        S-->>C: { requiresTwoFactor, tempToken }
+        C-->>User: 200 { tempToken }
+        User->>C: POST /auth/2fa/verify {tempToken, code}
+        C->>S: verifyTwoFactor(tempToken, code)
+        S->>S: speakeasy.totp.verify(code, secret)
+        S->>DB: prisma.refreshToken.create (SHA-256 hash)
+        S-->>C: { accessToken, refreshToken }
+    else No 2FA
+        S->>DB: prisma.refreshToken.create (SHA-256 hash)
+        S-->>C: { accessToken, refreshToken }
+    end
+    C-->>User: 200 accessToken + Set-Cookie: refreshToken (HttpOnly)
+```
+
+### Token Family Tracking & Theft Detection
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant C as AuthController
+    participant S as AuthService
+    participant DB as MySQL (Prisma)
+    participant Log as AuditLog
+
+    User->>C: POST /auth/refresh (cookie: refreshToken)
+    C->>S: refreshToken(raw)
+    S->>S: jwt.verify(raw) → get familyId
+    S->>DB: prisma.refreshToken.findUnique(SHA256 hash)
+    alt Not found in DB
+        S->>DB: Revoke all tokens in family
+        S->>Log: CRITICAL - Token theft detected
+        S-->>C: 401 Session invalidated
+    else Token already revoked
+        S->>DB: Revoke all tokens in family (compromise)
+        S->>Log: CRITICAL - Reuse of revoked token
+        S-->>C: 401 All sessions revoked
+    else Token valid & not revoked
+        S->>DB: Mark current token revoked
+        S->>DB: Create new token (same family)
+        S-->>C: { newAccessToken, newRefreshToken }
+    end
+    C-->>User: Response
+```
+
+### OAuth Flow (Passport.js)
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant C as OAuthController
+    participant P as Passport.js Strategy
+    participant Provider as Google/GitHub/LinkedIn
+    participant S as AuthService
+    participant DB as MySQL (Prisma)
+
+    User->>C: GET /auth/google
+    C->>P: passport.authenticate('google')
+    P->>Provider: Redirect to OAuth consent screen
+    Provider-->>P: Authorization code callback
+    P->>Provider: Exchange code for profile
+    Provider-->>P: User profile & email
+    P->>S: findOrCreateOAuthUser(profile)
+    S->>DB: prisma.user.upsert(email)
+    S->>DB: prisma.refreshToken.create
+    S-->>C: { accessToken, refreshToken }
+    C-->>User: Redirect to frontend with token
+```
+
 ## 5. Use Case Diagram
 
 The following diagram illustrates the primary use cases and actors interacting with the Node.js backend.

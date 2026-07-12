@@ -64,6 +64,91 @@ flowchart TD
 ### Admin & User Management
 - Controllers available for administrators to manage users (e.g., approving accounts) and for users to retrieve their own profiles.
 
+## 4. Sequence Diagrams
+
+### Login Flow (with optional 2FA)
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant API as AuthController
+    participant AS as AuthService
+    participant DB as MySQL (EF Core)
+    participant Cache as MemoryCache
+
+    User->>API: POST /auth/login {email, password}
+    API->>AS: LoginAsync(request)
+    AS->>DB: Find user by email
+    DB-->>AS: User entity
+    AS->>AS: BCrypt.Verify(password, hash)
+    alt 2FA Enabled
+        AS->>Cache: Store temp token (userId)
+        AS-->>API: { requiresTwoFactor: true, tempToken }
+        API-->>User: 200 { requiresTwoFactor, tempToken }
+        User->>API: POST /auth/2fa/verify {tempToken, code}
+        API->>AS: VerifyTwoFactorAsync(tempToken, code)
+        AS->>Cache: Retrieve userId from tempToken
+        AS->>AS: Validate TOTP code
+        AS->>DB: Store Refresh Token (hashed)
+        AS-->>API: { accessToken, refreshToken }
+    else 2FA Disabled
+        AS->>DB: Store Refresh Token (hashed)
+        AS-->>API: { accessToken, refreshToken }
+    end
+    API-->>User: 200 { accessToken } + Set-Cookie: refreshToken (HttpOnly)
+```
+
+### Refresh Token Rotation & Theft Detection
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant API as AuthController
+    participant AS as AuthService
+    participant DB as MySQL (EF Core)
+
+    User->>API: POST /auth/refresh (cookie: refreshToken)
+    API->>AS: RefreshTokenAsync(token)
+    AS->>DB: Lookup hashed token
+    alt Token not found
+        AS-->>API: 401 Revoke entire family (theft detected)
+    else Token already revoked
+        AS->>DB: Revoke entire token family
+        AS-->>API: 401 Compromise signal - all sessions invalidated
+    else Token valid
+        AS->>DB: Mark old token as revoked
+        AS->>DB: Issue new Refresh Token (new hash)
+        AS-->>API: { accessToken, refreshToken }
+    end
+    API-->>User: 200 New tokens
+```
+
+### Password Reset Flow
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant API as AuthController
+    participant AS as AuthService
+    participant DB as MySQL (EF Core)
+    participant SMTP as EmailService
+
+    User->>API: POST /auth/forgot-password {email}
+    API->>AS: ForgotPasswordAsync(email)
+    AS->>DB: Generate & hash reset token
+    AS->>SMTP: Send reset link (raw token)
+    AS-->>API: 200 Safe response (no leak)
+    API-->>User: 200 Check your email
+
+    User->>API: POST /auth/reset-password {token, newPassword}
+    API->>AS: ResetPasswordAsync(token, newPassword)
+    AS->>DB: Validate token hash, check expiry
+    AS->>DB: Update password (BCrypt hash)
+    AS->>DB: Revoke ALL refresh tokens for user
+    AS-->>API: 200 Password reset
+    API-->>User: 200 Success
+```
+
 ## 5. Use Case Diagram
 
 The following diagram illustrates the primary use cases and actors interacting with the ASP.NET backend.

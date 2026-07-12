@@ -60,6 +60,101 @@ flowchart TD
 ### External Communications
 - Dedicated `EmailService` and `SmsService` classes to handle transactional notifications.
 
+## 4. Sequence Diagrams
+
+### Login Flow (with Audit Logging & optional 2FA)
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant R as Router (api.php)
+    participant M as Middleware (ThrottleRequests)
+    participant C as AuthController
+    participant AS as AuthService
+    participant DB as MySQL (Eloquent)
+    participant Redis as Redis Cache
+
+    User->>R: POST /api/auth/login {email, password}
+    R->>M: Rate limit check
+    M->>C: Request passes
+    C->>AS: login(data, ip, userAgent)
+    AS->>DB: Find user by email
+    AS->>AS: Hash::argon2id check
+    AS->>DB: LoginAttempt::create (audit log)
+    alt 2FA Enabled
+        AS->>AS: TokenService::signTempToken
+        AS-->>C: { requiresTwoFactor, tempToken }
+        C-->>User: 200 { requiresTwoFactor, tempToken }
+        User->>R: POST /api/auth/2fa/verify {tempToken, code}
+        C->>AS: TwoFactorService::verify(code)
+        AS->>AS: Google2FA::verifyKey
+        AS->>DB: RefreshToken::create (hashed)
+        AS-->>C: { accessToken, refreshToken }
+    else No 2FA
+        AS->>DB: RefreshToken::create (hashed)
+        AS-->>C: { accessToken, refreshToken }
+    end
+    C-->>User: 200 Tokens + HttpOnly cookie
+```
+
+### Token Rotation & Compromise Detection
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant C as AuthController
+    participant AS as AuthService
+    participant TS as TokenService
+    participant DB as MySQL
+
+    User->>C: POST /api/auth/refresh (cookie: refreshToken)
+    C->>AS: refreshToken(rawToken, ip, ua)
+    AS->>TS: verifyRefreshToken(raw)
+    AS->>DB: Find by SHA-256 hash
+    alt Token not in DB
+        AS->>DB: Revoke entire token family
+        AS-->>C: 401 Theft detected
+    else Token already revoked
+        AS->>DB: Revoke entire token family (COMPROMISE)
+        AS-->>C: 401 All sessions revoked
+    else Token valid
+        AS->>DB: Mark revoked = true
+        AS->>DB: RefreshToken::create (new family entry)
+        AS-->>C: { accessToken, refreshToken }
+    end
+    C-->>User: New tokens issued
+```
+
+### Password Reset Flow
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant C as AuthController
+    participant AS as AuthService
+    participant DB as MySQL
+    participant ES as EmailService
+    participant Q as Redis Queue
+
+    User->>C: POST /api/auth/forgot-password {email}
+    C->>AS: forgotPassword(email)
+    AS->>DB: Expire old tokens for user
+    AS->>DB: PasswordResetToken::create (hashed)
+    AS->>ES: sendPasswordResetEmail()
+    ES->>Q: Dispatch queued mail job
+    AS-->>C: 200 Safe ambiguous message
+    C-->>User: 200 Check your email
+
+    User->>C: POST /api/auth/reset-password {token, newPassword}
+    C->>AS: resetPassword(token, newPassword)
+    AS->>DB: Validate token hash + expiry
+    AS->>DB: Update password (argon2id)
+    AS->>DB: Revoke ALL active refresh tokens
+    AS->>ES: sendPasswordChangedEmail()
+    AS-->>C: 200 Reset successful
+    C-->>User: 200 Log in with new password
+```
+
 ## 5. Use Case Diagram
 
 The following diagram illustrates the primary use cases and actors interacting with the Laravel backend.
