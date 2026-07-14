@@ -6,6 +6,9 @@ use App\Http\Controllers\Auth\TwoFactorController;
 use App\Http\Controllers\Auth\OAuthController;
 use App\Http\Controllers\User\UserController;
 use App\Http\Controllers\Admin\AdminController;
+use App\Http\Controllers\Test\TestController;
+use App\Http\Controllers\Test\QuestionController;
+use App\Http\Controllers\Test\SubmissionController;
 
 Route::get('/csrf-token', [AuthController::class, 'getCsrfToken']);
 
@@ -58,4 +61,40 @@ Route::prefix('admin')->middleware(['auth.jwt', 'role:ADMIN'])->group(function (
     Route::patch('/users/{id}/status', [AdminController::class, 'updateUserStatus']);
     Route::get('/system/stats', [AdminController::class, 'getSystemStats']);
     Route::get('/system/audit-logs', [AdminController::class, 'getAuditLogs']);
+
+    Route::get('/tests/pending', [TestController::class, 'listPendingTests']);
+    Route::get('/tests/{id}', [TestController::class, 'getTest']);
+    Route::post('/tests/{id}/approve', [TestController::class, 'approveTest']);
+    Route::post('/tests/{id}/reject', [TestController::class, 'rejectTest']);
+});
+
+// ─── Assessment Routes ────────────────────────────────────────────────────────
+
+// Recruiter
+Route::prefix('recruiter')->middleware(['auth.jwt', 'role:RECRUITER'])->group(function () {
+    Route::post('/tests', [TestController::class, 'createTest']);
+    Route::get('/tests/my', [TestController::class, 'listMyTests']);
+    Route::get('/tests/{id}', [TestController::class, 'getTest']);
+    Route::patch('/tests/{id}', [TestController::class, 'updateTest']);
+    Route::delete('/tests/{id}', [TestController::class, 'archiveTest']);
+    Route::post('/tests/{id}/submit-for-review', [TestController::class, 'submitForReview']);
+    Route::get('/tests/{id}/submissions', [TestController::class, 'getSubmissions']);
+
+    Route::post('/tests/{id}/questions', [QuestionController::class, 'addQuestion']);
+    Route::patch('/tests/{id}/questions/{qId}', [QuestionController::class, 'updateQuestion']);
+    Route::delete('/tests/{id}/questions/{qId}', [QuestionController::class, 'deleteQuestion']);
+
+    Route::patch('/submissions/{id}/grade', [SubmissionController::class, 'grade']);
+});
+
+// Candidate
+Route::prefix('candidate')->middleware(['auth.jwt', 'role:CANDIDATE'])->group(function () {
+    Route::get('/tests', [TestController::class, 'listPublishedTests']);
+    Route::get('/tests/{id}', [TestController::class, 'getTest']);
+    
+    Route::post('/tests/{id}/submissions', [SubmissionController::class, 'start']);
+    Route::get('/tests/{id}/submissions/my', [SubmissionController::class, 'getMySubmission']);
+    
+    Route::post('/submissions/{id}/answers', [SubmissionController::class, 'submitAnswers']);
+    Route::post('/submissions/{id}/submit', [SubmissionController::class, 'finalize']);
 });

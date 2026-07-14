@@ -15,6 +15,10 @@ public interface IApplicationDbContext
     DbSet<PasswordResetToken> PasswordResetTokens { get; }
     DbSet<LoginAttempt> LoginAttempts { get; }
     DbSet<AuditLog> AuditLogs { get; }
+    DbSet<Test> Tests { get; }
+    DbSet<Question> Questions { get; }
+    DbSet<TestSubmission> TestSubmissions { get; }
+    DbSet<QuestionAnswer> QuestionAnswers { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

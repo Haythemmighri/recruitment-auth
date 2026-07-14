@@ -19,6 +19,11 @@ public class RecruitmentAuthContext : DbContext, IApplicationDbContext
     public virtual DbSet<PasswordResetToken> PasswordResetTokens { get; set; }
     public virtual DbSet<RefreshToken> RefreshTokens { get; set; }
     public virtual DbSet<User> Users { get; set; }
+    
+    public virtual DbSet<Test> Tests { get; set; }
+    public virtual DbSet<Question> Questions { get; set; }
+    public virtual DbSet<TestSubmission> TestSubmissions { get; set; }
+    public virtual DbSet<QuestionAnswer> QuestionAnswers { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
@@ -161,6 +166,103 @@ public class RecruitmentAuthContext : DbContext, IApplicationDbContext
                 .HasColumnName("status");
             entity.Property(e => e.TwoFactorSecret).HasMaxLength(191).HasColumnName("two_factor_secret");
             entity.Property(e => e.UpdatedAt).HasColumnType("datetime(3)").HasColumnName("updated_at");
+        });
+
+        modelBuilder.Entity<Test>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("tests").UseCollation("utf8mb4_unicode_ci");
+            entity.HasIndex(e => e.RecruiterId, "tests_recruiter_id_idx");
+            entity.Property(e => e.Id).HasMaxLength(191).HasColumnName("id");
+            entity.Property(e => e.RecruiterId).HasMaxLength(191).HasColumnName("recruiter_id");
+            entity.Property(e => e.Title).HasMaxLength(255).HasColumnName("title");
+            entity.Property(e => e.Description).HasColumnType("text").HasColumnName("description");
+            entity.Property(e => e.Category).HasColumnType("varchar(100)").HasConversion<string>().HasColumnName("category");
+            entity.Property(e => e.Type).HasColumnType("varchar(50)").HasConversion<string>().HasColumnName("type");
+            entity.Property(e => e.Status).HasColumnType("varchar(50)").HasConversion<string>().HasColumnName("status");
+            entity.Property(e => e.DurationMinutes).HasColumnName("duration_minutes");
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime(3)").HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt).HasColumnType("datetime(3)").HasColumnName("updated_at");
+            
+            entity.HasOne(d => d.Recruiter).WithMany(p => p.CreatedTests)
+                .HasForeignKey(d => d.RecruiterId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("tests_recruiter_id_fkey");
+        });
+
+        modelBuilder.Entity<Question>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("questions").UseCollation("utf8mb4_unicode_ci");
+            entity.HasIndex(e => e.TestId, "questions_test_id_idx");
+            entity.Property(e => e.Id).HasMaxLength(191).HasColumnName("id");
+            entity.Property(e => e.TestId).HasMaxLength(191).HasColumnName("test_id");
+            entity.Property(e => e.Content).HasColumnType("text").HasColumnName("content");
+            entity.Property(e => e.OrderIndex).HasColumnName("order_index");
+            entity.Property(e => e.Points).HasColumnName("points");
+            entity.Property(e => e.Options).HasColumnType("json").HasColumnName("options");
+            entity.Property(e => e.ExpectedOutput).HasColumnType("text").HasColumnName("expected_output");
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime(3)").HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt).HasColumnType("datetime(3)").HasColumnName("updated_at");
+
+            entity.HasOne(d => d.Test).WithMany(p => p.Questions)
+                .HasForeignKey(d => d.TestId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("questions_test_id_fkey");
+        });
+
+        modelBuilder.Entity<TestSubmission>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("test_submissions").UseCollation("utf8mb4_unicode_ci");
+            entity.HasIndex(e => new { e.TestId, e.CandidateId }, "test_submissions_test_candidate_unique").IsUnique();
+            entity.HasIndex(e => e.CandidateId, "test_submissions_candidate_id_idx");
+            entity.Property(e => e.Id).HasMaxLength(191).HasColumnName("id");
+            entity.Property(e => e.TestId).HasMaxLength(191).HasColumnName("test_id");
+            entity.Property(e => e.CandidateId).HasMaxLength(191).HasColumnName("candidate_id");
+            entity.Property(e => e.Status).HasColumnType("varchar(50)").HasConversion<string>().HasColumnName("status");
+            entity.Property(e => e.StartedAt).HasColumnType("datetime(3)").HasColumnName("started_at");
+            entity.Property(e => e.SubmittedAt).HasColumnType("datetime(3)").HasColumnName("submitted_at");
+            entity.Property(e => e.Score).HasColumnType("decimal(5,2)").HasColumnName("score");
+            entity.Property(e => e.MaxScore).HasColumnType("decimal(5,2)").HasColumnName("max_score");
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime(3)").HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt).HasColumnType("datetime(3)").HasColumnName("updated_at");
+
+            entity.HasOne(d => d.Test).WithMany(p => p.Submissions)
+                .HasForeignKey(d => d.TestId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("test_submissions_test_id_fkey");
+
+            entity.HasOne(d => d.Candidate).WithMany(p => p.Submissions)
+                .HasForeignKey(d => d.CandidateId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("test_submissions_candidate_id_fkey");
+        });
+
+        modelBuilder.Entity<QuestionAnswer>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("question_answers").UseCollation("utf8mb4_unicode_ci");
+            entity.HasIndex(e => new { e.SubmissionId, e.QuestionId }, "question_answers_sub_question_unique").IsUnique();
+            entity.Property(e => e.Id).HasMaxLength(191).HasColumnName("id");
+            entity.Property(e => e.SubmissionId).HasMaxLength(191).HasColumnName("submission_id");
+            entity.Property(e => e.QuestionId).HasMaxLength(191).HasColumnName("question_id");
+            entity.Property(e => e.AnswerText).HasColumnType("text").HasColumnName("answer_text");
+            entity.Property(e => e.SelectedOptions).HasColumnType("json").HasColumnName("selected_options");
+            entity.Property(e => e.IsCorrect).HasColumnName("is_correct");
+            entity.Property(e => e.PointsAwarded).HasColumnType("decimal(5,2)").HasColumnName("points_awarded");
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime(3)").HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt).HasColumnType("datetime(3)").HasColumnName("updated_at");
+
+            entity.HasOne(d => d.Submission).WithMany(p => p.Answers)
+                .HasForeignKey(d => d.SubmissionId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("question_answers_submission_id_fkey");
+
+            entity.HasOne(d => d.Question).WithMany(p => p.Answers)
+                .HasForeignKey(d => d.QuestionId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("question_answers_question_id_fkey");
         });
     }
 }

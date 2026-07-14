@@ -26,4 +26,7 @@ public class User
     public virtual ICollection<LoginAttempt> LoginAttempts { get; set; } = new List<LoginAttempt>();
     public virtual ICollection<PasswordResetToken> PasswordResetTokens { get; set; } = new List<PasswordResetToken>();
     public virtual ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
+    
+    public virtual ICollection<Test> CreatedTests { get; set; } = new List<Test>();
+    public virtual ICollection<TestSubmission> Submissions { get; set; } = new List<TestSubmission>();
 }

@@ -16,6 +16,7 @@ import { doubleCsrfProtection } from './middleware/csrf.middleware';
 import authRoutes from './modules/auth/auth.routes';
 import userRoutes from './modules/users/user.routes';
 import adminRoutes from './modules/admin/admin.routes';
+import testRoutes from './modules/tests/test.routes';
 import { sendError } from './utils/response.util';
 
 export const app: Express = express();
@@ -78,6 +79,7 @@ app.use(
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/tests', testRoutes);
 
 // Mount authRoutes on /auth as well to support legacy OAuth redirect URIs
 // that were registered in Google/GitHub/LinkedIn consoles without the /api prefix.

@@ -31,7 +31,11 @@ Regardless of the backend you choose to run, the system implements the following
 - **Two-Factor Authentication (2FA)**: Full TOTP implementation (Google Authenticator) with QR Code generation.
 - **OAuth Social Logins**: Seamless integration with Google, GitHub, and LinkedIn.
 - **Password Management**: Secure Forgot / Reset password flows that automatically revoke existing sessions upon completion.
-- **Email & SMS Notifications**: Transactional emails (verification, reset) and SMS integration.
+- **Recruiter Assessment System**:
+  - **Recruiters** can create interactive assessments (QCMs, problem solving, logic tests) and manage candidate submissions.
+  - **Admins** review and approve assessments before they go live.
+  - **Candidates** can browse published tests and take them within a timed, interactive UI.
+  - Features auto-grading for multiple-choice questions.
 - **Security Hardening**: Argon2id/BCrypt password hashing, XSS sanitization, CSRF Double-Submit cookie protection, and strictly typed input validation.
 
 ## Documentation

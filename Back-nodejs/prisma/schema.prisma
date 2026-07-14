@@ -31,6 +31,8 @@ model User {
   loginAttempts           LoginAttempt[]
   passwordResetTokens     PasswordResetToken[]
   refreshTokens           RefreshToken[]
+  createdTests            Test[]
+  submissions             TestSubmission[]
 
   @@index([email])
   @@index([phone])
@@ -117,6 +119,87 @@ model LoginAttempt {
   @@map("login_attempts")
 }
 
+// ─── Assessment Models ────────────────────────────────────────────────────────
+
+model Test {
+  id              String           @id @default(cuid())
+  recruiterId     String           @map("recruiter_id")
+  title           String           @db.VarChar(255)
+  description     String?          @db.Text
+  category        TestCategory
+  type            TestType
+  status          TestStatus       @default(DRAFT)
+  rejectionReason String?          @map("rejection_reason") @db.Text
+  durationMinutes Int?             @map("duration_minutes")
+  createdAt       DateTime         @map("created_at") @default(now())
+  updatedAt       DateTime         @map("updated_at") @updatedAt
+  recruiter       User             @relation(fields: [recruiterId], references: [id], onDelete: Cascade)
+  questions       Question[]
+  submissions     TestSubmission[]
+
+  @@index([recruiterId])
+  @@index([category])
+  @@index([status])
+  @@map("tests")
+}
+
+model Question {
+  id             String           @id @default(cuid())
+  testId         String           @map("test_id")
+  content        String           @db.Text
+  orderIndex     Int              @map("order_index") @default(0)
+  points         Int              @default(1)
+  options        String?          @db.LongText  // JSON: [{label, value, isCorrect}]
+  expectedOutput String?          @map("expected_output") @db.Text
+  createdAt      DateTime         @map("created_at") @default(now())
+  updatedAt      DateTime         @map("updated_at") @updatedAt
+  test           Test             @relation(fields: [testId], references: [id], onDelete: Cascade)
+  answers        QuestionAnswer[]
+
+  @@index([testId])
+  @@map("questions")
+}
+
+model TestSubmission {
+  id          String           @id @default(cuid())
+  testId      String           @map("test_id")
+  candidateId String           @map("candidate_id")
+  status      SubmissionStatus @default(IN_PROGRESS)
+  startedAt   DateTime         @map("started_at") @default(now())
+  submittedAt DateTime?        @map("submitted_at")
+  score       Decimal?         @db.Decimal(5, 2)
+  maxScore    Decimal?         @map("max_score") @db.Decimal(5, 2)
+  createdAt   DateTime         @map("created_at") @default(now())
+  updatedAt   DateTime         @map("updated_at") @updatedAt
+  test        Test             @relation(fields: [testId], references: [id], onDelete: Cascade)
+  candidate   User             @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  answers     QuestionAnswer[]
+
+  @@unique([testId, candidateId])
+  @@index([candidateId])
+  @@index([testId])
+  @@map("test_submissions")
+}
+
+model QuestionAnswer {
+  id              String        @id @default(cuid())
+  submissionId    String        @map("submission_id")
+  questionId      String        @map("question_id")
+  answerText      String?       @map("answer_text") @db.Text
+  selectedOptions String?       @map("selected_options") @db.LongText  // JSON: [value, ...]
+  isCorrect       Boolean?      @map("is_correct")
+  pointsAwarded   Decimal?      @map("points_awarded") @db.Decimal(5, 2)
+  createdAt       DateTime      @map("created_at") @default(now())
+  updatedAt       DateTime      @map("updated_at") @updatedAt
+  submission      TestSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  question        Question      @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([submissionId, questionId])
+  @@index([submissionId])
+  @@index([questionId])
+  @@map("question_answers")
+}
+
 enum Role {
   CANDIDATE
   RECRUITER
@@ -129,4 +212,48 @@ enum UserStatus {
   ACTIVE
   SUSPENDED
   DELETED
+}
+
+// ─── Assessment Enums ─────────────────────────────────────────────────────────
+
+enum TestCategory {
+  CODING_PROGRAMMING
+  DATA_STRUCTURES_ALGORITHMS
+  DEBUGGING
+  SYSTEM_DESIGN
+  DATABASE_SQL
+  OOP
+  FRAMEWORK_TECHNOLOGY
+  API_DEVELOPMENT
+  CLOUD_DEVOPS
+  VERSION_CONTROL
+  TESTING_QA
+  SECURITY
+  PERFORMANCE_OPTIMIZATION
+  CODE_REVIEW
+  PROJECT_BASED
+  TECHNICAL_QUIZ
+  PROBLEM_SOLVING_LOGIC
+  COMMUNICATION_COLLABORATION
+}
+
+enum TestType {
+  QCM
+  COMPTE_RENDU
+  PROBLEM_SOLVING
+  OTHER
+}
+
+enum TestStatus {
+  DRAFT
+  PENDING_REVIEW
+  PUBLISHED
+  REJECTED
+  ARCHIVED
+}
+
+enum SubmissionStatus {
+  IN_PROGRESS
+  SUBMITTED
+  GRADED
 }
