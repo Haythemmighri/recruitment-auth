@@ -1,7 +1,7 @@
 import { z } from 'zod';
-import { TestCategory, TestType, SubmissionStatus } from '@prisma/client';
+import { TestCategory, TestType } from '@prisma/client';
 
-// ─── Test ─────────────────────────────────────────────────────────────────────
+// Test validators
 
 export const createTestSchema = z.object({
   title: z.string().min(3).max(255),
@@ -13,7 +13,7 @@ export const createTestSchema = z.object({
 
 export const updateTestSchema = createTestSchema.partial();
 
-// ─── Question ─────────────────────────────────────────────────────────────────
+// Question validators
 
 const qcmOptionSchema = z.object({
   label: z.string().min(1),
@@ -33,7 +33,7 @@ export const createQuestionSchema = z.object({
 
 export const updateQuestionSchema = createQuestionSchema.partial();
 
-// ─── Submission ───────────────────────────────────────────────────────────────
+// Submission validators
 
 const answerItemSchema = z.object({
   questionId: z.string().cuid(),
@@ -50,7 +50,7 @@ export const gradeSubmissionSchema = z.object({
   feedback: z.string().max(2000).optional(),
 });
 
-// ─── Filters ──────────────────────────────────────────────────────────────────
+// Filters
 
 export const listTestsQuerySchema = z.object({
   category: z.nativeEnum(TestCategory).optional(),

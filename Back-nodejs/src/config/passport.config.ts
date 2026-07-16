@@ -209,14 +209,16 @@ passport.use(
 
 // ─── LinkedIn Strategy ────────────────────────────────────────────────────────
 
-// Monkey-patch LinkedInStrategy to use OpenID Connect userinfo endpoint instead of legacy v2/me
-LinkedInStrategy.prototype.userProfile = function(accessToken: string, done: (err: any, profile?: any) => void) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(LinkedInStrategy.prototype as any).userProfile = function(accessToken: string, done: (err: any, profile?: any) => void) {
   // Force the oauth2 client to send the token in the Authorization header
-  this._oauth2.useAuthorizationHeaderforGET(true);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const self = this as any;
+  self._oauth2.useAuthorizationHeaderforGET(true);
   // Ensure the query param name is reset just in case
-  this._oauth2.setAccessTokenName('access_token');
+  self._oauth2.setAccessTokenName('access_token');
 
-  this._oauth2.get('https://api.linkedin.com/v2/userinfo', accessToken, function (err: any, body: any, res: any) {
+  self._oauth2.get('https://api.linkedin.com/v2/userinfo', accessToken, function (err: any, body: any, _res: any) {
     if (err) {
       return done(new Error('failed to fetch user profile: ' + (err.data || err.message || err)));
     }

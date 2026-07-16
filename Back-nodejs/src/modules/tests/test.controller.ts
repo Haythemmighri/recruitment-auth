@@ -89,7 +89,6 @@ export const getTestSubmissions = async (req: Request, res: Response) => {
   }
 };
 
-// ─── Candidate — Browse tests ─────────────────────────────────────────────────
 
 export const listPublishedTests = async (req: Request, res: Response) => {
   try {

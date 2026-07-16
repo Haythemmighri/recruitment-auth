@@ -119,7 +119,7 @@ model LoginAttempt {
   @@map("login_attempts")
 }
 
-// ─── Assessment Models ────────────────────────────────────────────────────────
+// Assessment Models
 
 model Test {
   id              String           @id @default(cuid())
@@ -149,7 +149,8 @@ model Question {
   content        String           @db.Text
   orderIndex     Int              @map("order_index") @default(0)
   points         Int              @default(1)
-  options        String?          @db.LongText  // JSON: [{label, value, isCorrect}]
+  // options: JSON array [{label, value, isCorrect}]
+  options        String?          @db.LongText
   expectedOutput String?          @map("expected_output") @db.Text
   createdAt      DateTime         @map("created_at") @default(now())
   updatedAt      DateTime         @map("updated_at") @updatedAt
@@ -182,17 +183,18 @@ model TestSubmission {
 }
 
 model QuestionAnswer {
-  id              String        @id @default(cuid())
-  submissionId    String        @map("submission_id")
-  questionId      String        @map("question_id")
-  answerText      String?       @map("answer_text") @db.Text
-  selectedOptions String?       @map("selected_options") @db.LongText  // JSON: [value, ...]
-  isCorrect       Boolean?      @map("is_correct")
-  pointsAwarded   Decimal?      @map("points_awarded") @db.Decimal(5, 2)
-  createdAt       DateTime      @map("created_at") @default(now())
-  updatedAt       DateTime      @map("updated_at") @updatedAt
+  id              String         @id @default(cuid())
+  submissionId    String         @map("submission_id")
+  questionId      String         @map("question_id")
+  answerText      String?        @map("answer_text") @db.Text
+  // selectedOptions: JSON array [value, ...]
+  selectedOptions String?        @map("selected_options") @db.LongText
+  isCorrect       Boolean?       @map("is_correct")
+  pointsAwarded   Decimal?       @map("points_awarded") @db.Decimal(5, 2)
+  createdAt       DateTime       @map("created_at") @default(now())
+  updatedAt       DateTime       @map("updated_at") @updatedAt
   submission      TestSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
-  question        Question      @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  question        Question       @relation(fields: [questionId], references: [id], onDelete: Cascade)
 
   @@unique([submissionId, questionId])
   @@index([submissionId])
@@ -214,7 +216,7 @@ enum UserStatus {
   DELETED
 }
 
-// ─── Assessment Enums ─────────────────────────────────────────────────────────
+// Assessment Enums
 
 enum TestCategory {
   CODING_PROGRAMMING

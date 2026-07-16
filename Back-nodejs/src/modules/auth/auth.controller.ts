@@ -268,7 +268,7 @@ export const authController = {
       }
       const result = await authService.setupTwoFactor(userId);
       await auditLog(req, AuditEvents.TWO_FACTOR_SETUP);
-      sendSuccess(res, result, result.message);
+      sendSuccess(res, result, 'Two-factor setup successful. Scan the QR code with your authenticator app.');
     } catch (e) {
       if (e instanceof AuthError) { handleAuthError(res, e); return; }
       handleUnexpectedError(res, e, 'setupTwoFactor');

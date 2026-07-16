@@ -14,7 +14,7 @@ import type {
   ListTestsQuery,
 } from './test.validators';
 
-// ─── Test CRUD ────────────────────────────────────────────────────────────────
+// Test CRUD
 
 export async function createTest(recruiterId: string, dto: CreateTestDto) {
   return prisma.test.create({
@@ -117,7 +117,7 @@ export async function updateTest(
   });
 }
 
-// ─── Submit for Admin Review (Recruiter) ─────────────────────────────────────
+// --- Submit for Admin Review (Recruiter) -------------------------------------
 
 export async function submitForReview(id: string, recruiterId: string) {
   const test = await prisma.test.findUnique({
@@ -156,7 +156,7 @@ export async function archiveTest(id: string, recruiterId: string) {
   });
 }
 
-// ─── Question CRUD ────────────────────────────────────────────────────────────
+// --- Question CRUD ------------------------------------------------------------
 
 export async function addQuestion(
   testId: string,
@@ -236,7 +236,7 @@ export async function deleteQuestion(
   return prisma.question.delete({ where: { id: questionId } });
 }
 
-// ─── Admin — Review Actions ───────────────────────────────────────────────────
+// Admin -- Review Actions
 
 export async function listPendingTests(query: ListTestsQuery) {
   const { category, type, page, limit } = query;
@@ -284,5 +284,27 @@ export async function rejectTest(id: string, reason: string) {
   return prisma.test.update({
     where: { id },
     data: { status: TestStatus.REJECTED, rejectionReason: reason },
+  });
+}
+
+// Recruiter -- Get submissions for a test
+
+export async function getTestSubmissions(testId: string, recruiterId: string) {
+  const test = await prisma.test.findUnique({ where: { id: testId } });
+  if (!test) throw Object.assign(new Error('Test not found'), { status: 404 });
+  if (test.recruiterId !== recruiterId)
+    throw Object.assign(new Error('Forbidden'), { status: 403 });
+
+  return prisma.testSubmission.findMany({
+    where: { testId },
+    include: {
+      candidate: { select: { id: true, firstName: true, lastName: true, email: true } },
+      answers: {
+        include: {
+          question: { select: { id: true, content: true, points: true } },
+        },
+      },
+    },
+    orderBy: { createdAt: 'desc' },
   });
 }
