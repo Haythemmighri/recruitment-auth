@@ -13,6 +13,21 @@ public class Test
     public TestStatus Status { get; set; } = TestStatus.DRAFT;
     public string? RejectionReason { get; set; }
     public int? DurationMinutes { get; set; }
+
+    // ── New configuration fields ──────────────────────────────────────────────
+    public int? PassingScore { get; set; }
+    public DifficultyLevel? DifficultyLevel { get; set; }
+    public bool RandomizeQuestions { get; set; } = false;
+    public bool OneQuestionPerPage { get; set; } = false;
+    public bool NegativeMarking { get; set; } = false;
+    public bool AllowRetake { get; set; } = false;
+    public DateTime? AvailableFrom { get; set; }
+    public DateTime? AvailableUntil { get; set; }
+    public bool ShowResultsInstantly { get; set; } = true;
+    /// <summary>JSON: { browserLock, webcam, tabSwitchDetection }</summary>
+    public string? AntiCheating { get; set; }
+    // ─────────────────────────────────────────────────────────────────────────
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 

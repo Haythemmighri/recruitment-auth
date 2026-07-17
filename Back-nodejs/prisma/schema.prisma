@@ -122,20 +122,33 @@ model LoginAttempt {
 // Assessment Models
 
 model Test {
-  id              String           @id @default(cuid())
-  recruiterId     String           @map("recruiter_id")
-  title           String           @db.VarChar(255)
-  description     String?          @db.Text
-  category        TestCategory
-  type            TestType
-  status          TestStatus       @default(DRAFT)
-  rejectionReason String?          @map("rejection_reason") @db.Text
-  durationMinutes Int?             @map("duration_minutes")
-  createdAt       DateTime         @map("created_at") @default(now())
-  updatedAt       DateTime         @map("updated_at") @updatedAt
-  recruiter       User             @relation(fields: [recruiterId], references: [id], onDelete: Cascade)
-  questions       Question[]
-  submissions     TestSubmission[]
+  id                   String          @id @default(cuid())
+  recruiterId          String          @map("recruiter_id")
+  title                String          @db.VarChar(255)
+  description          String?         @db.Text
+  category             TestCategory
+  type                 TestType
+  status               TestStatus      @default(DRAFT)
+  rejectionReason      String?         @map("rejection_reason") @db.Text
+  durationMinutes      Int?            @map("duration_minutes")
+  // -- New configuration fields ----------------------------------------------
+  passingScore         Int?            @map("passing_score")
+  difficultyLevel      DifficultyLevel? @map("difficulty_level")
+  randomizeQuestions   Boolean         @map("randomize_questions") @default(false)
+  oneQuestionPerPage   Boolean         @map("one_question_per_page") @default(false)
+  negativeMarking      Boolean         @map("negative_marking") @default(false)
+  allowRetake          Boolean         @map("allow_retake") @default(false)
+  availableFrom        DateTime?       @map("available_from")
+  availableUntil       DateTime?       @map("available_until")
+  showResultsInstantly Boolean         @map("show_results_instantly") @default(true)
+  // antiCheating: JSON {browserLock: bool, webcam: bool, tabSwitchDetection: bool}
+  antiCheating         String?         @map("anti_cheating") @db.Text
+  // -------------------------------------------------------------------------
+  createdAt            DateTime        @map("created_at") @default(now())
+  updatedAt            DateTime        @map("updated_at") @updatedAt
+  recruiter            User            @relation(fields: [recruiterId], references: [id], onDelete: Cascade)
+  questions            Question[]
+  submissions          TestSubmission[]
 
   @@index([recruiterId])
   @@index([category])
@@ -149,15 +162,31 @@ model Question {
   content        String           @db.Text
   orderIndex     Int              @map("order_index") @default(0)
   points         Int              @default(1)
-  // options: JSON array [{label, value, isCorrect}]
+  questionType   QuestionType     @map("question_type") @default(MCQ_SINGLE)
+  // options: JSON array [{label, value, isCorrect}] - used by MCQ_SINGLE, MCQ_MULTI, TRUE_FALSE
   options        String?          @db.LongText
   expectedOutput String?          @map("expected_output") @db.Text
+  // -- Type-specific fields --------------------------------------------------
+  explanation    String?          @db.Text         // Post-answer explanation
+  mediaUrl       String?          @map("media_url") @db.VarChar(2048)
+  codeLanguage   String?          @map("code_language") @db.VarChar(50)
+  codeStarter    String?          @map("code_starter") @db.LongText
+  // matchPairs: JSON [{left: string, right: string}] - MATCHING
+  matchPairs     String?          @map("match_pairs") @db.LongText
+  // correctOrder: JSON [string, ...] - ORDERING
+  correctOrder   String?          @map("correct_order") @db.LongText
+  // NUMERICAL bounds
+  numericalMin   Decimal?         @map("numerical_min") @db.Decimal(12, 4)
+  numericalMax   Decimal?         @map("numerical_max") @db.Decimal(12, 4)
+  tolerance      Decimal?         @db.Decimal(12, 4)
+  // -------------------------------------------------------------------------
   createdAt      DateTime         @map("created_at") @default(now())
   updatedAt      DateTime         @map("updated_at") @updatedAt
   test           Test             @relation(fields: [testId], references: [id], onDelete: Cascade)
   answers        QuestionAnswer[]
 
   @@index([testId])
+  @@index([questionType])
   @@map("questions")
 }
 
@@ -189,8 +218,11 @@ model QuestionAnswer {
   answerText      String?        @map("answer_text") @db.Text
   // selectedOptions: JSON array [value, ...]
   selectedOptions String?        @map("selected_options") @db.LongText
+  // fileUrl: used by FILE_UPLOAD, AUDIO_RESPONSE, VIDEO_RESPONSE
+  fileUrl         String?        @map("file_url") @db.VarChar(2048)
   isCorrect       Boolean?       @map("is_correct")
   pointsAwarded   Decimal?       @map("points_awarded") @db.Decimal(5, 2)
+  recruiterFeedback String?      @map("recruiter_feedback") @db.Text
   createdAt       DateTime       @map("created_at") @default(now())
   updatedAt       DateTime       @map("updated_at") @updatedAt
   submission      TestSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
@@ -258,4 +290,27 @@ enum SubmissionStatus {
   IN_PROGRESS
   SUBMITTED
   GRADED
+}
+
+enum QuestionType {
+  MCQ_SINGLE     // Multiple Choice - Single Answer (radio)
+  MCQ_MULTI      // Multiple Choice - Multiple Answers (checkboxes)
+  TRUE_FALSE     // True / False
+  FILL_BLANK     // Fill in the Blank
+  SHORT_TEXT     // Short Text Answer
+  LONG_ESSAY     // Long Essay
+  CODE_EDITOR    // Code Editor (compile & run)
+  FILE_UPLOAD    // File Upload (PDF, ZIP, Word, Images)
+  DRAG_DROP      // Drag and Drop
+  MATCHING       // Matching Questions
+  ORDERING       // Ordering / Sequence Questions
+  NUMERICAL      // Numerical Answer
+  AUDIO_RESPONSE // Audio Response
+  VIDEO_RESPONSE // Video Response
+}
+
+enum DifficultyLevel {
+  EASY
+  MEDIUM
+  HARD
 }
