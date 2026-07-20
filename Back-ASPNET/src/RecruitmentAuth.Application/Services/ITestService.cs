@@ -18,6 +18,10 @@ public interface ITestService
     Task<(IEnumerable<Test> Tests, int Total)> ListPendingTestsAsync(TestCategory? category, TestType? type, int page = 1, int limit = 20);
     Task<Test> ApproveTestAsync(string id);
     Task<Test> RejectTestAsync(string id, string reason);
+    Task<(IEnumerable<TestSubscription> Subscriptions, int Total)> ListPendingSubscriptionsAsync(int page = 1, int limit = 20);
+    Task<TestSubscription> ApproveSubscriptionAsync(string subscriptionId);
+    Task<TestSubscription> RejectSubscriptionAsync(string subscriptionId);
+
 
     // Questions (Recruiter)
     Task<Question> AddQuestionAsync(string testId, string recruiterId, CreateQuestionDto dto);
@@ -29,6 +33,8 @@ public interface ITestService
     
     // Candidate Operations
     Task<(IEnumerable<Test> Tests, int Total)> ListPublishedTestsAsync(TestCategory? category, TestType? type, int page = 1, int limit = 20);
+    Task<TestSubscription> SubscribeToTestAsync(string testId, string candidateId);
+    Task<IEnumerable<TestSubscription>> GetMySubscriptionsAsync(string candidateId);
     Task<TestSubmission> StartSubmissionAsync(string testId, string candidateId);
     Task<TestSubmission> GetMySubmissionAsync(string testId, string candidateId);
     Task<TestSubmission> SubmitAnswersAsync(string submissionId, string candidateId, SubmitAnswersDto dto);

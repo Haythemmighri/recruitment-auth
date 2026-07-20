@@ -24,6 +24,8 @@ public class RecruitmentAuthContext : DbContext, IApplicationDbContext
     public virtual DbSet<Question> Questions { get; set; }
     public virtual DbSet<TestSubmission> TestSubmissions { get; set; }
     public virtual DbSet<QuestionAnswer> QuestionAnswers { get; set; }
+    public virtual DbSet<TestSubscription> TestSubscriptions { get; set; }
+
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
@@ -263,6 +265,30 @@ public class RecruitmentAuthContext : DbContext, IApplicationDbContext
                 .HasForeignKey(d => d.QuestionId)
                 .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("question_answers_question_id_fkey");
+        });
+
+        modelBuilder.Entity<TestSubscription>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.ToTable("test_subscriptions").UseCollation("utf8mb4_unicode_ci");
+            entity.HasIndex(e => new { e.TestId, e.CandidateId }, "test_subscriptions_test_candidate_unique").IsUnique();
+            entity.HasIndex(e => e.CandidateId, "test_subscriptions_candidate_id_idx");
+            entity.Property(e => e.Id).HasMaxLength(191).HasColumnName("id");
+            entity.Property(e => e.TestId).HasMaxLength(191).HasColumnName("test_id");
+            entity.Property(e => e.CandidateId).HasMaxLength(191).HasColumnName("candidate_id");
+            entity.Property(e => e.Status).HasColumnType("varchar(50)").HasConversion<string>().HasColumnName("status");
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime(3)").HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt).HasColumnType("datetime(3)").HasColumnName("updated_at");
+
+            entity.HasOne(d => d.Test).WithMany(p => p.TestSubscriptions)
+                .HasForeignKey(d => d.TestId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("test_subscriptions_test_id_fkey");
+
+            entity.HasOne(d => d.Candidate).WithMany(p => p.TestSubscriptions)
+                .HasForeignKey(d => d.CandidateId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("test_subscriptions_candidate_id_fkey");
         });
     }
 }

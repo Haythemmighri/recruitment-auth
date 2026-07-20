@@ -66,6 +66,10 @@ Route::prefix('admin')->middleware(['auth.jwt', 'role:ADMIN'])->group(function (
     Route::get('/tests/{id}', [TestController::class, 'getTest']);
     Route::post('/tests/{id}/approve', [TestController::class, 'approveTest']);
     Route::post('/tests/{id}/reject', [TestController::class, 'rejectTest']);
+
+    Route::get('/subscriptions/pending', [TestController::class, 'listPendingSubscriptions']);
+    Route::post('/subscriptions/{id}/approve', [TestController::class, 'approveSubscription']);
+    Route::post('/subscriptions/{id}/reject', [TestController::class, 'rejectSubscription']);
 });
 
 // ─── Assessment Routes ────────────────────────────────────────────────────────
@@ -91,7 +95,9 @@ Route::prefix('recruiter')->middleware(['auth.jwt', 'role:RECRUITER'])->group(fu
 Route::prefix('candidate')->middleware(['auth.jwt', 'role:CANDIDATE'])->group(function () {
     Route::get('/tests', [TestController::class, 'listPublishedTests']);
     Route::get('/tests/{id}', [TestController::class, 'getTest']);
-    
+    Route::post('/tests/{id}/subscribe', [TestController::class, 'subscribeToTest']);
+    Route::get('/subscriptions/my', [TestController::class, 'getMySubscriptions']);
+
     Route::post('/tests/{id}/submissions', [SubmissionController::class, 'start']);
     Route::get('/tests/{id}/submissions/my', [SubmissionController::class, 'getMySubmission']);
     

@@ -6,7 +6,7 @@ import type { SubmitAnswersDto } from './test.validators';
 
 /** Returns true if a question type can be auto-graded without human review. */
 function isAutoGradable(questionType: QuestionType): boolean {
-  return [
+  return ([
     QuestionType.MCQ_SINGLE,
     QuestionType.MCQ_MULTI,
     QuestionType.TRUE_FALSE,
@@ -15,7 +15,7 @@ function isAutoGradable(questionType: QuestionType): boolean {
     QuestionType.ORDERING,
     QuestionType.MATCHING,
     QuestionType.DRAG_DROP,
-  ].includes(questionType);
+  ] as QuestionType[]).includes(questionType);
 }
 
 interface GradeResult {
@@ -125,6 +125,22 @@ export async function startSubmission(testId: string, candidateId: string) {
   if (test.status !== 'PUBLISHED')
     throw Object.assign(new Error('Test is not available'), { status: 400 });
 
+  // ── Subscription gate ─────────────────────────────────────────────────────
+  const subscription = await prisma.testSubscription.findUnique({
+    where: { testId_candidateId: { testId, candidateId } },
+  });
+  if (!subscription)
+    throw Object.assign(
+      new Error('You must subscribe to this test before starting it'),
+      { status: 403 }
+    );
+  if (subscription.status !== 'APPROVED')
+    throw Object.assign(
+      new Error('Your subscription is not yet approved'),
+      { status: 403 }
+    );
+  // ─────────────────────────────────────────────────────────────────────────
+
   // Availability window check
   const now = new Date();
   if (test.availableFrom && now < test.availableFrom)
@@ -152,6 +168,7 @@ export async function startSubmission(testId: string, candidateId: string) {
     data: { testId, candidateId, startedAt: new Date() },
   });
 }
+
 
 // ─── Get My Submission ────────────────────────────────────────────────────────
 

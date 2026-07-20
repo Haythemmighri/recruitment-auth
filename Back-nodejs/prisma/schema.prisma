@@ -33,6 +33,7 @@ model User {
   refreshTokens           RefreshToken[]
   createdTests            Test[]
   submissions             TestSubmission[]
+  testSubscriptions       TestSubscription[]
 
   @@index([email])
   @@index([phone])
@@ -149,6 +150,7 @@ model Test {
   recruiter            User            @relation(fields: [recruiterId], references: [id], onDelete: Cascade)
   questions            Question[]
   submissions          TestSubmission[]
+  testSubscriptions    TestSubscription[]
 
   @@index([recruiterId])
   @@index([category])
@@ -290,6 +292,29 @@ enum SubmissionStatus {
   IN_PROGRESS
   SUBMITTED
   GRADED
+}
+
+enum SubscriptionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model TestSubscription {
+  id          String             @id @default(cuid())
+  testId      String             @map("test_id")
+  candidateId String             @map("candidate_id")
+  status      SubscriptionStatus @default(PENDING)
+  createdAt   DateTime           @map("created_at") @default(now())
+  updatedAt   DateTime           @map("updated_at") @updatedAt
+  test        Test               @relation(fields: [testId], references: [id], onDelete: Cascade)
+  candidate   User               @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+
+  @@unique([testId, candidateId])
+  @@index([candidateId])
+  @@index([testId])
+  @@index([status])
+  @@map("test_subscriptions")
 }
 
 enum QuestionType {

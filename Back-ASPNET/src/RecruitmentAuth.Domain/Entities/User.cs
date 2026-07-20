@@ -29,4 +29,5 @@ public class User
     
     public virtual ICollection<Test> CreatedTests { get; set; } = new List<Test>();
     public virtual ICollection<TestSubmission> Submissions { get; set; } = new List<TestSubmission>();
+    public virtual ICollection<TestSubscription> TestSubscriptions { get; set; } = new List<TestSubscription>();
 }

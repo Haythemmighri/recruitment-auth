@@ -45,6 +45,10 @@ candidateRouter.get('/:testId/submissions/my', submissionController.getMySubmiss
 candidateRouter.post('/submissions/:submissionId/answers', submissionController.submitAnswers);
 candidateRouter.post('/submissions/:submissionId/submit', submissionController.finalizeSubmission);
 
+// Subscriptions
+candidateRouter.post('/:testId/subscribe', submissionController.subscribeToTest);
+candidateRouter.get('/subscriptions/my', submissionController.getMySubscriptions);
+
 // ─── Admin Routes (review tests) ─────────────────────────────────────────────
 
 const adminRouter = Router();
@@ -54,6 +58,11 @@ adminRouter.get('/tests/pending', testController.listPendingTests);
 adminRouter.get('/tests/:id', testController.getTest);
 adminRouter.post('/tests/:id/approve', testController.approveTest);
 adminRouter.post('/tests/:id/reject', testController.rejectTest);
+
+// Subscriptions
+adminRouter.get('/subscriptions/pending', submissionController.listPendingSubscriptions);
+adminRouter.post('/subscriptions/:id/approve', submissionController.approveSubscription);
+adminRouter.post('/subscriptions/:id/reject', submissionController.rejectSubscription);
 
 // ─── Main Router Mounts ──────────────────────────────────────────────────
 

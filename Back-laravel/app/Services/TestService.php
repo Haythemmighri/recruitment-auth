@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Test;
 use App\Models\Question;
 use App\Models\TestSubmission;
+use App\Models\TestSubscription;
 use App\Models\QuestionAnswer;
 use Illuminate\Support\Facades\DB;
 
@@ -142,6 +143,74 @@ class TestService
         return $test;
     }
 
+    // ─── Subscriptions ─────────────────────────────────────────────────────────
+
+    public function subscribeToTest(string $testId, string $candidateId)
+    {
+        $test = Test::findOrFail($testId);
+
+        if ($test->status !== 'PUBLISHED') {
+            abort(400, 'Test is not available for subscription');
+        }
+
+        $existing = TestSubscription::where('test_id', $testId)
+            ->where('candidate_id', $candidateId)
+            ->first();
+
+        if ($existing) {
+            return $existing; // Already subscribed
+        }
+
+        return TestSubscription::create([
+            'test_id'      => $testId,
+            'candidate_id' => $candidateId,
+            'status'       => 'PENDING',
+        ]);
+    }
+
+    public function getMySubscriptions(string $candidateId)
+    {
+        return TestSubscription::where('candidate_id', $candidateId)
+            ->with(['test:id,title,category,type,status,duration_minutes'])
+            ->latest()
+            ->get();
+    }
+
+    public function listPendingSubscriptions(int $perPage = 20)
+    {
+        return TestSubscription::where('status', 'PENDING')
+            ->with([
+                'test:id,title,category,type',
+                'candidate:id,first_name,last_name,email',
+            ])
+            ->oldest()
+            ->paginate($perPage);
+    }
+
+    public function approveSubscription(string $subscriptionId)
+    {
+        $subscription = TestSubscription::findOrFail($subscriptionId);
+
+        if ($subscription->status !== 'PENDING') {
+            abort(400, 'Subscription is not pending');
+        }
+
+        $subscription->update(['status' => 'APPROVED']);
+        return $subscription;
+    }
+
+    public function rejectSubscription(string $subscriptionId)
+    {
+        $subscription = TestSubscription::findOrFail($subscriptionId);
+
+        if ($subscription->status !== 'PENDING') {
+            abort(400, 'Subscription is not pending');
+        }
+
+        $subscription->update(['status' => 'REJECTED']);
+        return $subscription;
+    }
+
     public function addQuestion(string $testId, string $recruiterId, array $data)
     {
         $test = Test::findOrFail($testId);
@@ -204,6 +273,15 @@ class TestService
             abort(400, 'Test is not available');
         }
 
+        // Verify that the candidate has an approved subscription
+        $subscription = TestSubscription::where('test_id', $testId)
+            ->where('candidate_id', $candidateId)
+            ->first();
+
+        if (!$subscription || $subscription->status !== 'APPROVED') {
+            abort(403, 'You must have an approved subscription to start this test');
+        }
+
         $existing = TestSubmission::where('test_id', $testId)
             ->where('candidate_id', $candidateId)
             ->first();
@@ -216,9 +294,9 @@ class TestService
         }
 
         return TestSubmission::create([
-            'test_id' => $testId,
+            'test_id'      => $testId,
             'candidate_id' => $candidateId,
-            'started_at' => now(),
+            'started_at'   => now(),
         ]);
     }
 

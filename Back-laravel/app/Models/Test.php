@@ -34,4 +34,9 @@ class Test extends Model
     {
         return $this->hasMany(TestSubmission::class);
     }
+
+    public function subscriptions()
+    {
+        return $this->hasMany(TestSubscription::class);
+    }
 }

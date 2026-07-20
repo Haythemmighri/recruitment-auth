@@ -154,6 +154,27 @@ public class TestsController : ControllerBase
         });
     }
 
+    [Authorize(Roles = "CANDIDATE")]
+    [HttpPost("{testId}/subscribe")]
+    public async Task<IActionResult> SubscribeToTest(string testId)
+    {
+        try
+        {
+            var subscription = await _testService.SubscribeToTestAsync(testId, GetUserId());
+            return Ok(new { message = "Subscription request sent", data = subscription });
+        }
+        catch (KeyNotFoundException) { return NotFound(new { message = "Test not found" }); }
+        catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
+    }
+
+    [Authorize(Roles = "CANDIDATE")]
+    [HttpGet("subscriptions/my")]
+    public async Task<IActionResult> GetMySubscriptions()
+    {
+        var subscriptions = await _testService.GetMySubscriptionsAsync(GetUserId());
+        return Ok(new { message = "Subscriptions retrieved", data = subscriptions });
+    }
+
     // ─── Admin Endpoints ──────────────────────────────────────────────────────
 
     [Authorize(Roles = "ADMIN")]
@@ -192,6 +213,45 @@ public class TestsController : ControllerBase
             return Ok(new { message = "Test rejected", data = test });
         }
         catch (KeyNotFoundException) { return NotFound(); }
+        catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
+    }
+
+    [Authorize(Roles = "ADMIN")]
+    [HttpGet("subscriptions/pending")]
+    public async Task<IActionResult> ListPendingSubscriptions([FromQuery] int page = 1, [FromQuery] int limit = 20)
+    {
+        var (subscriptions, total) = await _testService.ListPendingSubscriptionsAsync(page, limit);
+        return Ok(new
+        {
+            message = "Pending subscriptions retrieved",
+            data = subscriptions,
+            meta = new { total, page, limit, totalPages = (int)Math.Ceiling(total / (double)limit) }
+        });
+    }
+
+    [Authorize(Roles = "ADMIN")]
+    [HttpPost("subscriptions/{id}/approve")]
+    public async Task<IActionResult> ApproveSubscription(string id)
+    {
+        try
+        {
+            var subscription = await _testService.ApproveSubscriptionAsync(id);
+            return Ok(new { message = "Subscription approved", data = subscription });
+        }
+        catch (KeyNotFoundException) { return NotFound(new { message = "Subscription not found" }); }
+        catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
+    }
+
+    [Authorize(Roles = "ADMIN")]
+    [HttpPost("subscriptions/{id}/reject")]
+    public async Task<IActionResult> RejectSubscription(string id)
+    {
+        try
+        {
+            var subscription = await _testService.RejectSubscriptionAsync(id);
+            return Ok(new { message = "Subscription rejected", data = subscription });
+        }
+        catch (KeyNotFoundException) { return NotFound(new { message = "Subscription not found" }); }
         catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
     }
 

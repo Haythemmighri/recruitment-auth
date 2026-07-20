@@ -81,14 +81,14 @@ export const updateQuestionSchema = createQuestionSchema.partial();
 // --- Submission Validators ----------------------------------------------------
 
 const answerItemSchema = z.object({
-  questionId:      z.string().cuid(),
+  questionId:      z.string().min(1),  // Accept any non-empty string ID
   answerText:      z.string().optional(),
-  selectedOptions: z.array(z.string()).optional(),
+  selectedOptions: z.array(z.any()).optional(), // Accept any values (strings or objects)
   fileUrl:         z.string().url().optional(),
 });
 
 export const submitAnswersSchema = z.object({
-  answers: z.array(answerItemSchema).min(1),
+  answers: z.array(answerItemSchema).min(0), // Allow empty array (e.g. time-expired auto-submit)
 });
 
 export const gradeSubmissionSchema = z.object({

@@ -164,6 +164,48 @@ public class TestService : ITestService
         return test;
     }
 
+    public async Task<(IEnumerable<TestSubscription> Subscriptions, int Total)> ListPendingSubscriptionsAsync(int page = 1, int limit = 20)
+    {
+        var query = _context.TestSubscriptions.Where(s => s.Status == SubscriptionStatus.PENDING);
+        
+        var total = await query.CountAsync();
+        var subscriptions = await query
+            .Include(s => s.Test)
+            .Include(s => s.Candidate)
+            .OrderBy(s => s.CreatedAt)
+            .Skip((page - 1) * limit)
+            .Take(limit)
+            .ToListAsync();
+
+        return (subscriptions, total);
+    }
+
+    public async Task<TestSubscription> ApproveSubscriptionAsync(string subscriptionId)
+    {
+        var subscription = await _context.TestSubscriptions.FirstOrDefaultAsync(s => s.Id == subscriptionId);
+        if (subscription == null) throw new KeyNotFoundException("Subscription not found");
+        if (subscription.Status != SubscriptionStatus.PENDING) throw new InvalidOperationException("Subscription is not pending");
+
+        subscription.Status = SubscriptionStatus.APPROVED;
+        subscription.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync(default);
+
+        return subscription;
+    }
+
+    public async Task<TestSubscription> RejectSubscriptionAsync(string subscriptionId)
+    {
+        var subscription = await _context.TestSubscriptions.FirstOrDefaultAsync(s => s.Id == subscriptionId);
+        if (subscription == null) throw new KeyNotFoundException("Subscription not found");
+        if (subscription.Status != SubscriptionStatus.PENDING) throw new InvalidOperationException("Subscription is not pending");
+
+        subscription.Status = SubscriptionStatus.REJECTED;
+        subscription.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync(default);
+
+        return subscription;
+    }
+
     public async Task ArchiveTestAsync(string id, string recruiterId)
     {
         var test = await _context.Tests.FirstOrDefaultAsync(t => t.Id == id);
@@ -247,11 +289,56 @@ public class TestService : ITestService
             .ToListAsync();
     }
 
+    public async Task<TestSubscription> SubscribeToTestAsync(string testId, string candidateId)
+    {
+        var test = await _context.Tests.FirstOrDefaultAsync(t => t.Id == testId);
+        if (test == null) throw new KeyNotFoundException("Test not found");
+        if (test.Status != TestStatus.PUBLISHED) throw new InvalidOperationException("Test is not available for subscription");
+
+        var existing = await _context.TestSubscriptions
+            .FirstOrDefaultAsync(s => s.TestId == testId && s.CandidateId == candidateId);
+
+        if (existing != null)
+        {
+            return existing; // Already subscribed or pending
+        }
+
+        var subscription = new TestSubscription
+        {
+            TestId = testId,
+            CandidateId = candidateId,
+            Status = SubscriptionStatus.PENDING
+        };
+
+        _context.TestSubscriptions.Add(subscription);
+        await _context.SaveChangesAsync(default);
+
+        return subscription;
+    }
+
+    public async Task<IEnumerable<TestSubscription>> GetMySubscriptionsAsync(string candidateId)
+    {
+        return await _context.TestSubscriptions
+            .Where(s => s.CandidateId == candidateId)
+            .Include(s => s.Test)
+            .OrderByDescending(s => s.CreatedAt)
+            .ToListAsync();
+    }
+
     public async Task<TestSubmission> StartSubmissionAsync(string testId, string candidateId)
     {
         var test = await _context.Tests.FirstOrDefaultAsync(t => t.Id == testId);
         if (test == null) throw new KeyNotFoundException("Test not found");
         if (test.Status != TestStatus.PUBLISHED) throw new InvalidOperationException("Test is not available");
+
+        // Verify that the candidate has an approved subscription
+        var subscription = await _context.TestSubscriptions
+            .FirstOrDefaultAsync(s => s.TestId == testId && s.CandidateId == candidateId);
+
+        if (subscription == null || subscription.Status != SubscriptionStatus.APPROVED)
+        {
+            throw new InvalidOperationException("You must have an approved subscription to start this test");
+        }
 
         var existing = await _context.TestSubmissions
             .FirstOrDefaultAsync(s => s.TestId == testId && s.CandidateId == candidateId);

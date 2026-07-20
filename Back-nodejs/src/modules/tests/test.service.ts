@@ -325,6 +325,88 @@ export async function rejectTest(id: string, reason: string) {
   });
 }
 
+
+// ─── Test Subscriptions ───────────────────────────────────────────────────────
+
+export async function subscribeToTest(testId: string, candidateId: string) {
+  const test = await prisma.test.findUnique({ where: { id: testId } });
+  if (!test) throw Object.assign(new Error('Test not found'), { status: 404 });
+  if (test.status !== 'PUBLISHED')
+    throw Object.assign(new Error('Test is not available for subscription'), { status: 400 });
+
+  const existing = await prisma.testSubscription.findUnique({
+    where: { testId_candidateId: { testId, candidateId } },
+  });
+  if (existing)
+    throw Object.assign(new Error('You have already subscribed to this test'), { status: 409 });
+
+  return prisma.testSubscription.create({
+    data: { testId, candidateId },
+    include: {
+      test: { select: { id: true, title: true, category: true } },
+    },
+  });
+}
+
+export async function getMySubscriptions(candidateId: string) {
+  return prisma.testSubscription.findMany({
+    where: { candidateId },
+    include: {
+      test: {
+        select: {
+          id: true, title: true, category: true, type: true,
+          durationMinutes: true, difficultyLevel: true,
+          _count: { select: { questions: true } },
+        },
+      },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+}
+
+export async function listPendingSubscriptions() {
+  return prisma.testSubscription.findMany({
+    where: { status: 'PENDING' },
+    include: {
+      test: { select: { id: true, title: true, category: true } },
+      candidate: { select: { id: true, firstName: true, lastName: true, email: true } },
+    },
+    orderBy: { createdAt: 'asc' },
+  });
+}
+
+export async function approveSubscription(id: string) {
+  const sub = await prisma.testSubscription.findUnique({ where: { id } });
+  if (!sub) throw Object.assign(new Error('Subscription not found'), { status: 404 });
+  if (sub.status !== 'PENDING')
+    throw Object.assign(new Error('Subscription is not pending'), { status: 400 });
+
+  return prisma.testSubscription.update({
+    where: { id },
+    data: { status: 'APPROVED' },
+    include: {
+      test: { select: { id: true, title: true } },
+      candidate: { select: { id: true, firstName: true, lastName: true, email: true } },
+    },
+  });
+}
+
+export async function rejectSubscription(id: string) {
+  const sub = await prisma.testSubscription.findUnique({ where: { id } });
+  if (!sub) throw Object.assign(new Error('Subscription not found'), { status: 404 });
+  if (sub.status !== 'PENDING')
+    throw Object.assign(new Error('Subscription is not pending'), { status: 400 });
+
+  return prisma.testSubscription.update({
+    where: { id },
+    data: { status: 'REJECTED' },
+    include: {
+      test: { select: { id: true, title: true } },
+      candidate: { select: { id: true, firstName: true, lastName: true, email: true } },
+    },
+  });
+}
+
 // ─── Recruiter — Get Submissions for a Test ───────────────────────────────────
 
 export async function getTestSubmissions(testId: string, recruiterId: string) {

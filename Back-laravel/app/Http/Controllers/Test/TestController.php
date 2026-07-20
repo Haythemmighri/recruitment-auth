@@ -45,6 +45,18 @@ class TestController extends Controller
         return ResponseHelper::success($tests, 'Published tests retrieved');
     }
 
+    public function subscribeToTest(Request $request, $id)
+    {
+        $subscription = $this->testService->subscribeToTest($id, $request->user()->id);
+        return ResponseHelper::success($subscription, 'Subscription request sent');
+    }
+
+    public function getMySubscriptions(Request $request)
+    {
+        $subscriptions = $this->testService->getMySubscriptions($request->user()->id);
+        return ResponseHelper::success($subscriptions, 'Subscriptions retrieved');
+    }
+
     public function getTest(Request $request, $id)
     {
         $test = $this->testService->getTestById($id);
@@ -129,5 +141,25 @@ class TestController extends Controller
         ]);
         $test = $this->testService->rejectTest($id, $data['reason']);
         return ResponseHelper::success($test, 'Test rejected');
+    }
+
+    public function listPendingSubscriptions(Request $request)
+    {
+        $subscriptions = $this->testService->listPendingSubscriptions(
+            $request->query('limit', 20)
+        );
+        return ResponseHelper::success($subscriptions, 'Pending subscriptions retrieved');
+    }
+
+    public function approveSubscription(Request $request, $id)
+    {
+        $subscription = $this->testService->approveSubscription($id);
+        return ResponseHelper::success($subscription, 'Subscription approved');
+    }
+
+    public function rejectSubscription(Request $request, $id)
+    {
+        $subscription = $this->testService->rejectSubscription($id);
+        return ResponseHelper::success($subscription, 'Subscription rejected');
     }
 }

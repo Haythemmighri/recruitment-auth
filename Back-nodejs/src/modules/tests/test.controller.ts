@@ -110,22 +110,31 @@ export const getPublishedTest = async (req: Request, res: Response) => {
     const test = await testService.getTestById(req.params.id);
     if (!test || test.status !== 'PUBLISHED') return sendError(res, 'Test not found', 404);
 
-    // Strip correct-answer hints before sending to candidate
+    // Strip correct-answer hints (isCorrect flag) but keep all fields needed to render the question
     const sanitized = {
       ...test,
       questions: test.questions.map((q) => {
         const options = q.options
-          ? (JSON.parse(q.options) as Array<any>).map(({ label, value }) => ({
-              label,
-              value,
-            }))
+          ? (JSON.parse(q.options) as Array<any>).map(({ label, value }) => ({ label, value }))
+          : null;
+        const matchPairs = q.matchPairs
+          ? (JSON.parse(q.matchPairs) as Array<any>).map(({ left, right }) => ({ left, right }))
+          : null;
+        const correctOrder = q.correctOrder
+          ? JSON.parse(q.correctOrder)
           : null;
         return {
-          id: q.id,
-          content: q.content,
-          orderIndex: q.orderIndex,
-          points: q.points,
+          id:           q.id,
+          content:      q.content,
+          orderIndex:   q.orderIndex,
+          points:       q.points,
+          questionType: q.questionType,
+          mediaUrl:     q.mediaUrl,
           options,
+          matchPairs,
+          correctOrder,
+          codeLanguage: q.codeLanguage,
+          codeStarter:  q.codeStarter,
         };
       }),
     };

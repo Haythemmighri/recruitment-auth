@@ -34,4 +34,5 @@ public class Test
     public virtual User Recruiter { get; set; } = null!;
     public virtual ICollection<Question> Questions { get; set; } = new List<Question>();
     public virtual ICollection<TestSubmission> Submissions { get; set; } = new List<TestSubmission>();
+    public virtual ICollection<TestSubscription> TestSubscriptions { get; set; } = new List<TestSubscription>();
 }
