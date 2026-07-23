@@ -12,6 +12,7 @@ A hardened, production-ready authentication and authorization API built with Nod
 - **Injection Protection**: End-to-end type safety and schema validation via `zod`. XSS payload sanitization via `xss`. SQL injection prevented via Prisma ORM.
 - **CSRF**: Double-Submit Cookie pattern via `csrf-csrf`.
 - **Audit Logging**: Immutable, append-only logs for all security events.
+- **Recruitment Assessment Module**: Full backend implementation (`src/modules/tests`) covering Recruiter assessment creation/management (`/api/tests/recruiter`), Question management, Candidate test workflows (`/api/tests/candidate`), Subscriptions, Submission saving/finalization with automated QCM scoring, and Admin review/approval workflows (`/api/tests/admin`).
 
 ## Prerequisites
 - Node.js 20+

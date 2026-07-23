@@ -251,11 +251,11 @@ class TestService
         $question->delete();
     }
 
-    public function getTestSubmissions(string $testId, string $recruiterId)
+    public function getTestSubmissions(string $testId, string $requesterId, string $userRole = 'RECRUITER')
     {
         $test = Test::findOrFail($testId);
 
-        if ($test->recruiter_id !== $recruiterId) {
+        if ($userRole !== 'ADMIN' && $test->recruiter_id !== $requesterId) {
             abort(403, 'Forbidden');
         }
 

@@ -72,7 +72,7 @@ HTML;
 
     public function sendPasswordResetEmail(string $email, string $firstName, string $rawToken): void
     {
-        $resetUrl = env('CLIENT_URL') . "/#/auth/reset-password?token={$rawToken}";
+        $resetUrl = env('CLIENT_URL', 'http://localhost:4200') . "/#/reset-password?token={$rawToken}";
         
         $html = <<<HTML
 <!DOCTYPE html>

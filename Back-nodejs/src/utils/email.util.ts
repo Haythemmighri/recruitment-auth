@@ -104,7 +104,7 @@ export async function sendPasswordResetEmail(
   firstName: string,
   rawToken: string
 ): Promise<void> {
-  const resetUrl = `${config.app.clientUrl}/auth/reset-password?token=${rawToken}`;
+  const resetUrl = `${config.app.clientUrl}/#/reset-password?token=${rawToken}`;
 
   await sendEmail({
     to: email,

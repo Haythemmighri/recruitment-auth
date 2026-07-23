@@ -36,7 +36,7 @@ public class EmailService : IEmailService
     public async Task SendPasswordResetEmailAsync(string toEmail, string firstName, string token)
     {
         var clientUrl = _config["CLIENT_URL"] ?? "http://localhost:4200";
-        var resetUrl = $"{clientUrl}/auth/reset-password?token={Uri.EscapeDataString(token)}";
+        var resetUrl = $"{clientUrl}/#/reset-password?token={Uri.EscapeDataString(token)}";
 
         var body = $"""
             <h2>Hi, {firstName}!</h2>

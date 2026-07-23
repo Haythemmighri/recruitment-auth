@@ -409,10 +409,10 @@ export async function rejectSubscription(id: string) {
 
 // ─── Recruiter — Get Submissions for a Test ───────────────────────────────────
 
-export async function getTestSubmissions(testId: string, recruiterId: string) {
+export async function getTestSubmissions(testId: string, requesterId: string, userRole?: string) {
   const test = await prisma.test.findUnique({ where: { id: testId } });
   if (!test) throw Object.assign(new Error('Test not found'), { status: 404 });
-  if (test.recruiterId !== recruiterId)
+  if (userRole !== 'ADMIN' && test.recruiterId !== requesterId)
     throw Object.assign(new Error('Forbidden'), { status: 403 });
 
   return prisma.testSubmission.findMany({

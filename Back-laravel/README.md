@@ -7,19 +7,35 @@
 <a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
 </p>
 
+# Recruitment Authentication Platform — Laravel 13 Implementation
+
+This directory contains the **Laravel 13** (PHP 8.3) implementation of the Recruitment Authentication and Skill Testing Platform.
+
+## Architecture & Design Patterns
+- **Pattern**: MVC (Model-View-Controller) with decoupled `Service` layers (`TestService`, `UserService`, `AuthService`) and `FormRequest` validation.
+- **ORM**: Eloquent ORM with typed model relations (`Test`, `Question`, `TestSubmission`, `QuestionAnswer`, `TestSubscription`).
+- **Security**: JWT Authentication via `tymon/jwt-auth`, 2FA via Google Authenticator (`pragmarx/google2fa-laravel`), Redis session tracking, CSRF protection, and Argon2id password hashing.
+
+## Recruitment Assessment & Skill Testing Module
+- **Recruiter Endpoints**: Create and manage assessments (`POST /api/recruiter/tests`), configure question types (MCQ, Essay, Code, etc.), update tests, submit tests for admin review (`POST /api/recruiter/tests/{id}/submit-for-review`), view submissions, and grade candidates (`PATCH /api/recruiter/submissions/{id}/grade`).
+- **Candidate Endpoints**: Browse published assessments (`GET /api/candidate/tests`), subscribe to tests (`POST /api/candidate/tests/{id}/subscribe`), start test submissions (`POST /api/candidate/tests/{id}/submissions`), save answers in progress, and finalize submissions (`POST /api/candidate/submissions/{id}/submit`).
+- **Admin Endpoints**: Review pending tests (`GET /api/admin/tests/pending`), approve/reject assessments, and manage pending candidate subscriptions.
+
+## Automated Testing Suite (PHPUnit)
+
+Run automated unit and feature test suites with PHPUnit:
+
+```bash
+php artisan test
+# or
+./vendor/bin/phpunit
+```
+
+---
+
 ## About Laravel
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
-
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
-
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects.
 
 ## Learning Laravel
 

@@ -14,7 +14,7 @@ router.use(authenticate);
 // ─── Recruiter Routes (manage tests) ──────────────────────────────────────────
 
 const recruiterRouter = Router();
-recruiterRouter.use(authorize(Role.RECRUITER));
+recruiterRouter.use(authorize(Role.RECRUITER, Role.ADMIN));
 
 recruiterRouter.post('/', testController.createTest);
 recruiterRouter.get('/my', testController.listMyTests);
@@ -56,6 +56,7 @@ adminRouter.use(authorize(Role.ADMIN));
 
 adminRouter.get('/tests/pending', testController.listPendingTests);
 adminRouter.get('/tests/:id', testController.getTest);
+adminRouter.get('/tests/:id/submissions', testController.getTestSubmissions);
 adminRouter.post('/tests/:id/approve', testController.approveTest);
 adminRouter.post('/tests/:id/reject', testController.rejectTest);
 

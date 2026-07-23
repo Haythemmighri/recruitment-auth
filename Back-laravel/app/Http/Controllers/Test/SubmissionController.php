@@ -26,11 +26,11 @@ class SubmissionController extends Controller
     public function submitAnswers(Request $request, $submissionId)
     {
         $data = $request->validate([
-            'answers' => 'required|array|min:1',
-            'answers.*.questionId' => 'required|uuid',
+            'answers' => 'present|array',
+            'answers.*.questionId' => 'required|string',
             'answers.*.answerText' => 'nullable|string',
             'answers.*.selectedOptions' => 'nullable|array',
-            'answers.*.selectedOptions.*' => 'string',
+            'answers.*.fileUrl' => 'nullable|string',
         ]);
 
         $submission = $this->testService->submitAnswers($submissionId, $request->user()->id, $data['answers']);

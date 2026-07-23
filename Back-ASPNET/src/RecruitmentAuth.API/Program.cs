@@ -93,6 +93,12 @@ app.UseCors("AllowClient");
 app.UseAuthentication();
 app.UseAuthorization();
 
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<RecruitmentAuth.Infrastructure.Persistence.RecruitmentAuthContext>();
+    await RecruitmentAuth.Infrastructure.Persistence.DbInitializer.SeedAsync(context);
+}
+
 app.MapControllers();
 
 app.Run();

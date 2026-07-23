@@ -81,7 +81,8 @@ export const getTestSubmissions = async (req: Request, res: Response) => {
   try {
     const submissions = await testService.getTestSubmissions(
       req.params.id,
-      req.user!.id
+      req.user!.id,
+      req.user!.role
     );
     return sendSuccess(res, submissions, 'Submissions retrieved');
   } catch (err) {

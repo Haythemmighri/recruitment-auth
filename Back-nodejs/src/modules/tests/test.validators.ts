@@ -82,9 +82,9 @@ export const updateQuestionSchema = createQuestionSchema.partial();
 
 const answerItemSchema = z.object({
   questionId:      z.string().min(1),  // Accept any non-empty string ID
-  answerText:      z.string().optional(),
-  selectedOptions: z.array(z.any()).optional(), // Accept any values (strings or objects)
-  fileUrl:         z.string().url().optional(),
+  answerText:      z.string().optional().nullable(),
+  selectedOptions: z.array(z.any()).optional().nullable(), // Accept any values (strings or objects)
+  fileUrl:         z.string().optional().nullable(),
 });
 
 export const submitAnswersSchema = z.object({

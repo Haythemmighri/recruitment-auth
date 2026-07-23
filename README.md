@@ -31,12 +31,36 @@ Regardless of the backend you choose to run, the system implements the following
 - **Two-Factor Authentication (2FA)**: Full TOTP implementation (Google Authenticator) with QR Code generation.
 - **OAuth Social Logins**: Seamless integration with Google, GitHub, and LinkedIn.
 - **Password Management**: Secure Forgot / Reset password flows that automatically revoke existing sessions upon completion.
-- **Recruiter Assessment System**:
-  - **Recruiters** can create interactive assessments (QCMs, problem solving, logic tests) and manage candidate submissions.
-  - **Admins** review and approve assessments before they go live.
-  - **Candidates** can browse published tests and take them within a timed, interactive UI.
-  - Features auto-grading for multiple-choice questions.
+- **Recruiter Assessment & Skill Testing Module (Consistent Across Node.js, Laravel & ASP.NET Core)**:
+  - **Recruiter Workflow**: Create, edit, and manage technical assessments with customizable categories (Coding, DSA, SQL, DevOps, etc.), question types (MCQ Single/Multi, True/False, Essay, Code, File Upload, Matching, Ordering, Numerical), time limits, passing scores, difficulty levels, and anti-cheating settings (browser lock, webcam, tab switch detection).
+  - **Admin Workflow**: Review candidate subscription requests and pending assessments submitted by recruiters with approve/reject workflows and rejection reason feedback.
+  - **Candidate Workflow**: Browse published assessments, subscribe to tests, complete interactive timed tests, save answers in progress, and submit final responses.
+  - **Automated & Manual Grading System**: Automatic scoring calculation for objective question types (MCQ, True/False, Numerical) upon submission, and recruiter grading interface for manual essay/code/file responses.
 - **Security Hardening**: Argon2id/BCrypt password hashing, XSS sanitization, CSRF Double-Submit cookie protection, and strictly typed input validation.
+
+## Automated Testing Suites
+
+Each of the three backend implementations includes a dedicated automated test suite for unit and integration testing:
+
+- **Node.js (`Back-nodejs`)**: Automated unit and integration testing powered by **Jest** and **Supertest**.
+  ```bash
+  cd Back-nodejs
+  npm run test              # Run all Jest tests
+  npm run test:unit         # Run unit tests
+  npm run test:integration  # Run integration tests
+  ```
+- **Laravel (`Back-laravel`)**: Automated unit and feature testing powered by **PHPUnit**.
+  ```bash
+  cd Back-laravel
+  php artisan test          # Run all PHPUnit tests
+  # or
+  ./vendor/bin/phpunit
+  ```
+- **ASP.NET Core (`Back-ASPNET`)**: Automated unit and integration testing powered by **xUnit**, **Moq**, and **Microsoft.AspNetCore.Mvc.Testing**.
+  ```bash
+  cd Back-ASPNET
+  dotnet test               # Run all xUnit tests
+  ```
 
 ## Documentation
 
