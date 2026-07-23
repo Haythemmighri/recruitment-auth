@@ -1,0 +1,121 @@
+name: CI/CD Pipeline - Recruitment Platform
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  # ─── 1. FRONTEND BUILD & LINT ───────────────────────────────────────────────
+  frontend-ci:
+    name: Frontend (Angular)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Frontend Dependencies
+        run: |
+          cd frontend
+          npm ci
+
+      - name: Build Frontend Application
+        run: |
+          cd frontend
+          npm run build
+
+  # ─── 2. NODE.JS BACKEND CI ──────────────────────────────────────────────────
+  nodejs-backend-ci:
+    name: Node.js Backend
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: Back-nodejs/package-lock.json
+
+      - name: Install Node.js Dependencies
+        run: |
+          cd Back-nodejs
+          npm ci
+
+      - name: Generate Prisma Client
+        run: |
+          cd Back-nodejs
+          npx prisma generate
+
+      - name: Build Node.js TypeScript Application
+        run: |
+          cd Back-nodejs
+          npm run build
+
+  # ─── 3. LARAVEL BACKEND CI ──────────────────────────────────────────────────
+  laravel-backend-ci:
+    name: Laravel Backend
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, dom, fileinfo, mysql, pdo, pdo_mysql, bcmath, ctype, json, tokenizer, xml
+          coverage: none
+
+      - name: Install Composer Dependencies
+        run: |
+          cd Back-laravel
+          composer install --prefer-dist --no-progress --no-interaction
+
+      - name: Prepare Laravel Environment & Generate Key
+        run: |
+          cd Back-laravel
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Run Laravel PHPUnit Tests
+        run: |
+          cd Back-laravel
+          php artisan test
+
+  # ─── 4. ASP.NET CORE BACKEND CI ─────────────────────────────────────────────
+  dotnet-backend-ci:
+    name: ASP.NET Core Backend
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x' # Or '10.0.x' depending on runner preview availability
+
+      - name: Restore Dependencies
+        run: |
+          cd Back-ASPNET
+          dotnet restore
+
+      - name: Build ASP.NET Core Solution
+        run: |
+          cd Back-ASPNET
+          dotnet build --no-restore --configuration Release
