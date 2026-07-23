@@ -108,7 +108,7 @@ jobs:
       - name: Setup .NET SDK
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '9.0.x' # Or '10.0.x' depending on runner preview availability
+          dotnet-version: '10.0.x'
 
       - name: Restore Dependencies
         run: |
