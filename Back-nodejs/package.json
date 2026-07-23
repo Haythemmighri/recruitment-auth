@@ -20,6 +20,7 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@prisma/client": "5.10.0",
     "@types/passport": "^1.0.17",
     "@types/passport-github2": "^1.2.9",

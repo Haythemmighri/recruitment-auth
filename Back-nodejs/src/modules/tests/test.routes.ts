@@ -5,6 +5,7 @@ import { Role } from '@prisma/client';
 import * as testController from './test.controller';
 import * as questionController from './question.controller';
 import * as submissionController from './submission.controller';
+import * as aiGeneratorController from './ai-generator.controller';
 
 const router = Router();
 
@@ -17,6 +18,7 @@ const recruiterRouter = Router();
 recruiterRouter.use(authorize(Role.RECRUITER, Role.ADMIN));
 
 recruiterRouter.post('/', testController.createTest);
+recruiterRouter.post('/generate-ai', aiGeneratorController.generateAITest);
 recruiterRouter.get('/my', testController.listMyTests);
 recruiterRouter.get('/:id', testController.getTest);
 recruiterRouter.patch('/:id', testController.updateTest);
